@@ -1,0 +1,94 @@
+run:
+  tests: true       # do include test files
+
+linters:
+  enable:
+    - bodyclose     # checks whether HTTP response body is closed successfully
+    - dogsled       # checks assignments with too many blank identifiers
+    - errorlint     # find code that will cause problems with the error wrapping scheme introduced in Go 1.13
+    - exhaustive    # check exhaustiveness of enum switch statements
+    - forbidigo     # forbids identifiers
+    - goconst       # finds repeated strings that could be replaced by a constant
+    - makezero      # finds slice declarations with non-zero initial length
+    - nakedret      # finds naked returns in functions greater than a specified function length
+    - nestif        # reports deeply nested if statements
+    - nilerr        # finds the code that returns nil even if it checks that the error is not nil
+    - nolintlint    # reports ill-formed or insufficient nolint directives
+    - predeclared   # find code that shadows one of Go's predeclared identifiers
+    - revive        # fast, configurable, extensible, flexible, and beautiful linter for Go
+    - unconvert     # remove unnecessary type conversions
+    - unparam       # reports unused function parameters
+    - whitespace    # tool for detection of leading and trailing whitespace
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true           # report about not checking of errors in type assertions
+
+  errorlint:
+    errorf: true                          # check whether fmt.Errorf uses the %w verb for formatting errors
+    comparison: false                     # check for plain error comparisons
+
+  exhaustive:
+    check-generated: false                # check switch statements in generated files also
+    default-signifies-exhaustive: false   # exhaustive if 'default' case is present
+
+  forbidigo:
+    forbid:                               # forbid the following identifiers (as regexp
+      - 'log(rus)?\.(Fatal|error|Warn|Info|Debug|Trace)(f|ln)'
+
+  goconst:
+    min-len: 3                            # minimal length of string constant, 3 by default
+    min-occurrences: 3                    # minimal occurrences count to trigger, 3 by default
+
+  nestif:
+    min-complexity: 8                     # minimal complexity of if statements to report
+
+  nolintlint:
+    allow-unused: false                   # ensure that nolint directives are all used
+    allow-leading-space: false            # ensure that nolint directives don't have a leading space
+
+  revive:
+    ignore-generated-header: true         # ignores files with "GENERATED" header, similar to golint
+    rules:
+      - name: 'atomic'                    # check for common mistaken usages of the sync/atomic package
+      - name: 'confusing-naming'          # warns on methods with names that differ only by capitalization
+      - name: 'context-as-argument'       # context.Context should be the first argument of a function
+      - name: 'context-keys-type'         # disallows the usage of basic types in context.WithValue
+      - name: 'deep-exit'                 # looks for program exits in funcs other than main() or init()
+      - name: 'dot-imports'               # forbids . imports
+      - name: 'early-return'              # spots if-then-else statements that can be refactored
+      - name: 'empty-block'               # warns on empty code blocks
+      - name: 'empty-lines'               # warns when there are heading or trailing newlines in a block
+      - name: 'error-naming'              # naming of error variables
+      - name: 'error-return'              # the error return parameter should be last
+      - name: 'error-strings'             # conventions around error strings
+      - name: 'errorf'                    # should replace errors.New(fmt.Sprintf()) with fmt.Errorf()
+      - name: 'exported'                  # Exported function and methods should have comments
+      - name: 'identical-branches'        # spots if-then-else statements with identical then and else branches
+      - name: 'if-return'                 # redundant if when returning an error
+      - name: 'increment-decrement'       # use i++ and i-- instead of i += 1 and i -= 1
+      - name: 'indent-error-flow'         # prevents redundant else statements
+      - name: 'range'                     # prevents redundant variables when iterating over a collection
+      - name: 'receiver-naming'           # conventions around the naming of receivers
+      - name: 'string-of-int'             # warns on suspicious casts from int to string
+      - name: 'struct-tag'                # checks common struct tags like json,xml,yaml
+      - name: 'superfluous-else'          # prevents redundant else statements (extends 'indent-error-flow')
+      - name: 'time-naming'               # conventions around the naming of time variables
+      - name: 'unexported-return'         # warns when a public return is from unexported type
+      - name: 'unnecessary-stmt'          # suggests removing or simplifying unnecessary statements
+      - name: 'unreachable-code'          # warns on unreachable code
+      - name: 'unused-receiver'           # suggests to rename or remove unused method receivers
+      - name: 'var-declaration'           # reduces redundancies around variable declaration
+      - name: 'var-naming'                # naming rules
+      - name: 'waitgroup-by-value'        # warns on functions taking sync.WaitGroup as a by-value parameter
+
+  whitespace:
+    multi-if: false                       # enforces newlines after every multi-line if statement
+    multi-func: false                     # enforces newlines after every multi-line function signature
+
+issues:
+  exclude-use-default: false              # Use all linter errors (to be compatible with Vim)
+
+  exclude:
+    # Almost all programs ignore errors on these functions and in most cases it's OK
+    - 'Error return value of `(.*Close|.*Flush)` is not checked'
