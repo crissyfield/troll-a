@@ -45,7 +45,7 @@ var allowedPayloadTypes = map[string]bool{
 	"text/x-vcard":              true,
 }
 
-var awsAccessTokenRegexp = regexp.MustCompile(`(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}`)
+var githubAccessRegexp = regexp.MustCompile(`github_pat_[0-9a-zA-Z_]{82}|gho_[0-9a-zA-Z]{36}|ghp_[0-9a-zA-Z]{36}|ghr_[0-9a-zA-Z]{36}`)
 
 // Buffer ...
 type Buffer struct {
@@ -194,7 +194,7 @@ func runTest(_ *cobra.Command, args []string) {
 		}
 	}
 
-	slog.Info("Done")
+	slog.Info("Done", slog.String("url", args[0]))
 }
 
 // ...
@@ -204,9 +204,18 @@ func findSecret(wg *sync.WaitGroup, bufferCh chan *Buffer) {
 
 	for buffer := range bufferCh {
 		// ...
-		indexes := awsAccessTokenRegexp.FindAllIndex(buffer.Content, -1)
+		indexes := githubAccessRegexp.FindAllIndex(buffer.Content, -1)
 
 		for _, idx := range indexes {
+			// ...
+			if (idx[0] > 0) && isAlphaNum(buffer.Content[idx[0]-1]) {
+				continue
+			}
+
+			if (idx[1] < len(buffer.Content)-1) && isAlphaNum(buffer.Content[idx[1]+1]) {
+				continue
+			}
+
 			// ...
 			fmt.Printf(
 				"!!! Match [%s:%d]: \033[37m%s\033[1;33m%s\033[37m%s\033[0m\n",
@@ -231,4 +240,9 @@ func cleanUpStrings(in string) string {
 		},
 		in,
 	)
+}
+
+// ...
+func isAlphaNum(in byte) bool {
+	return (in >= 48 && in <= 57) || (in >= 65 && in <= 90) || (in >= 97 && in <= 122)
 }
