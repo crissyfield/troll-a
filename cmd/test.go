@@ -8,18 +8,56 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+	"unicode"
 
 	"github.com/spf13/cobra"
 )
 
+var allowedPayloadTypes = map[string]bool{
+	"application/atom+xml":      true, // https://www.rfc-editor.org/rfc/rfc5023.html
+	"application/json":          true, // https://www.rfc-editor.org/rfc/rfc8259.html
+	"application/mbox":          true, // https://www.rfc-editor.org/rfc/rfc4155.html
+	"application/msword":        true, // Microsoft Word Document or Document Template
+	"application/pgp-signature": true,
+	"application/rdf+xml":       true,
+	"application/rss+xml":       true,
+	"application/rtf":           true,
+	"application/vnd.ms-excel":  true,
+	"application/x-sh":          true,
+	"application/xhtml+xml":     true,
+	"application/xml":           true,
+	"image/svg+xml":             true,
+	"message/rfc822":            true,
+	"text/css":                  true,
+	"text/csv":                  true,
+	"text/html":                 true,
+	"text/plain":                true,
+	"text/x-chdr":               true,
+	"text/x-diff":               true,
+	"text/x-log":                true,
+	"text/x-perl":               true,
+	"text/x-php":                true,
+	"text/x-vcard":              true,
+}
+
+var awsAccessTokenRegexp = regexp.MustCompile(`(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}`)
+
+// Buffer ...
+type Buffer struct {
+	TargetURI string
+	Content   []byte
+}
+
 // CmdTest defines the CLI sub-command 'test'.
 var CmdTest = &cobra.Command{
-	Use:   "test [flags]",
+	Use:   "test [flags] [warc url]",
 	Short: "...",
-	Args:  cobra.NoArgs,
+	Args:  cobra.ExactArgs(1),
 	Run:   runTest,
 }
 
@@ -28,13 +66,13 @@ func init() {
 }
 
 // runTest is called when the "test" command is used.
-func runTest(_ *cobra.Command, _ []string) {
+func runTest(_ *cobra.Command, args []string) {
 	// ...
 	hc := &http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: 60 * 60 * 4 * time.Second,
 	}
 
-	res, err := hc.Get("https://data.commoncrawl.org/crawl-data/CC-MAIN-2023-40/segments/1695233510326.82/warc/CC-MAIN-20230927203115-20230927233115-00771.warc.gz")
+	res, err := hc.Get(args[0])
 	if err != nil {
 		slog.Error("Unable to fetch WARC file", slog.Any("error", err))
 		os.Exit(1) //nolint
@@ -49,8 +87,17 @@ func runTest(_ *cobra.Command, _ []string) {
 		os.Exit(1) //nolint
 	}
 
+	// Spawn go routines to check buffers for secrets
+	bufferCh := make(chan *Buffer)
+	wg := &sync.WaitGroup{}
+
+	for j := 0; j < 8; j++ {
+		wg.Add(1)
+		go findSecret(wg, bufferCh)
+	}
+
 	// Buffered IO
-	br := bufio.NewReader(gr)
+	br := bufio.NewReaderSize(gr, 4*1024*1024)
 
 	for {
 		// Read version
@@ -60,72 +107,128 @@ func runTest(_ *cobra.Command, _ []string) {
 		}
 
 		if err != nil {
-			slog.Error("Error while processing WARC body [header]", slog.Any("error", err))
+			slog.Error("Error while reading WARC record version", slog.Any("error", err))
 			os.Exit(1) //nolint
 		}
 
-		_ = version
+		if !strings.HasPrefix(string(version), "WARC/") {
+			slog.Error("Unknown WARC record version", slog.String("version", string(version)))
+			os.Exit(1) //nolint
+		}
 
-		// Read header
+		// Read headers
 		headers := make(map[string]string)
 
 		for {
-			// ...
-			data, isPrefix, err := br.ReadLine()
+			// Read header
+			header, isPrefix, err := br.ReadLine()
 			if err != nil {
-				slog.Error("Error while processing WARC body [key-value]", slog.Any("error", err))
+				slog.Error("Error while processing WARC record header", slog.Any("error", err))
 				os.Exit(1) //nolint
 			}
 
-			// ...
+			// Exit if the buffer is not big enough (32KiB)
 			if isPrefix {
-				slog.Error("Error while processing WARC body [prefix]", slog.Any("error", err))
+				slog.Error("WARC record header seems too big", slog.Any("error", err))
 				os.Exit(1) //nolint
 			}
 
-			// ...
-			header := string(data)
-
-			if header == "" {
+			// Stop reading headers on empty line
+			if len(header) == 0 {
 				break
 			}
 
-			// ...
-			parts := strings.SplitN(header, ":", 2)
+			// Split header into key and value
+			parts := strings.SplitN(string(header), ":", 2)
 			if len(parts) == 2 {
-				key, value := strings.ToLower(parts[0]), strings.TrimSpace(parts[1])
+				key := strings.ToLower(parts[0])
+				value := strings.TrimSpace(parts[1])
 
 				headers[key] = value
 			}
 		}
 
-		// ...
+		// Extract length of record content
 		length, err := strconv.Atoi(headers["content-length"])
 		if err != nil {
-			slog.Error("Error while processing WARC body [content-length]", slog.Any("error", err))
+			slog.Error("Unable to read record content length", slog.Any("error", err))
 			os.Exit(1) //nolint
 		}
 
 		// ...
 		cr := io.LimitReader(br, int64(length))
 
-		if (headers["warc-type"] != "response") || (headers["warc-identified-payload-type"] != "text/html") {
+		if (headers["warc-type"] == "response") && allowedPayloadTypes[headers["warc-identified-payload-type"]] {
 			// ...
-			_, _ = io.Copy(io.Discard, cr)
-		} else {
-			//
-			fmt.Println(
-				headers["warc-target-uri"],
-				headers["warc-type"],
-				headers["warc-identified-payload-type"],
-			)
+			content, err := io.ReadAll(cr)
+			if err != nil {
+				slog.Error("Unable to read content block", slog.Any("error", err))
+				os.Exit(1) //nolint
+			}
 
-			_, _ = io.Copy(io.Discard, cr)
+			bufferCh <- &Buffer{
+				TargetURI: headers["warc-target-uri"],
+				Content:   content,
+			}
 		}
 
-		// ...
-		_, _, _ = br.ReadLine()
-		_, _, _ = br.ReadLine()
+		// Discard remaining content block
+		_, err = io.Copy(io.Discard, cr)
+		if err != nil {
+			slog.Error("Unable to discard remaining content block", slog.Any("error", err))
+			os.Exit(1) //nolint
+		}
+
+		// Skip two empty lines
+		for i := 0; i < 2; i++ {
+			boundary, _, err := br.ReadLine()
+			if (err != nil) && (err != io.EOF) {
+				slog.Error("Unable to read WARC record boundary", slog.Any("error", err))
+				os.Exit(1) //nolint
+			}
+
+			if len(boundary) != 0 {
+				slog.Error("WARC record boundary not empty", slog.Any("error", err))
+				os.Exit(1) //nolint
+			}
+		}
 	}
+
 	slog.Info("Done")
+}
+
+// ...
+func findSecret(wg *sync.WaitGroup, bufferCh chan *Buffer) {
+	// ...
+	defer wg.Done()
+
+	for buffer := range bufferCh {
+		// ...
+		indexes := awsAccessTokenRegexp.FindAllIndex(buffer.Content, -1)
+
+		for _, idx := range indexes {
+			// ...
+			fmt.Printf(
+				"!!! Match [%s:%d]: \033[37m%s\033[1;33m%s\033[37m%s\033[0m\n",
+				buffer.TargetURI,
+				idx[0],
+				cleanUpStrings(string(buffer.Content[max(0, idx[0]-20):idx[0]])),
+				string(buffer.Content[idx[0]:idx[1]]),
+				cleanUpStrings(string(buffer.Content[idx[1]:min(len(buffer.Content), idx[1]+20)])),
+			)
+		}
+	}
+}
+
+// ...
+func cleanUpStrings(in string) string {
+	return strings.Map(
+		func(r rune) rune {
+			if unicode.IsPrint(r) {
+				return r
+			}
+			return -1
+		},
+		in,
+	)
 }
