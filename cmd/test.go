@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -11,184 +12,12 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/spf13/cobra"
-	"github.com/zricethezav/gitleaks/v8/cmd/generate/config/rules"
-	"github.com/zricethezav/gitleaks/v8/config"
 
+	"github.com/crissyfield/troll-a/internal/detect"
 	"github.com/crissyfield/troll-a/internal/fetch"
 )
-
-// rules ...
-var detectionRules = []*config.Rule{
-	// rules.AdafruitAPIKey(),
-	// rules.AdobeClientID(),
-	// rules.AdobeClientSecret(),
-	// rules.AgeSecretKey(),
-	// rules.Airtable(),
-	// rules.AlgoliaApiKey(),
-	// rules.AlibabaAccessKey(),
-	// rules.AlibabaSecretKey(),
-	// rules.AsanaClientID(),
-	// rules.AsanaClientSecret(),
-	// rules.Atlassian(),
-	// rules.Authress(),
-	rules.AWS(),
-	// rules.BitBucketClientID(),
-	// rules.BitBucketClientSecret(),
-	// rules.BittrexAccessKey(),
-	// rules.BittrexSecretKey(),
-	// rules.Beamer(),
-	// rules.CodecovAccessToken(),
-	// rules.CoinbaseAccessToken(),
-	// rules.Clojars(),
-	// rules.ConfluentAccessToken(),
-	// rules.ConfluentSecretKey(),
-	// rules.Contentful(),
-	// rules.Databricks(),
-	// rules.DatadogtokenAccessToken(),
-	// rules.DefinedNetworkingAPIToken(),
-	// rules.DigitalOceanPAT(),
-	// rules.DigitalOceanOAuthToken(),
-	// rules.DigitalOceanRefreshToken(),
-	// rules.DiscordAPIToken(),
-	// rules.DiscordClientID(),
-	// rules.DiscordClientSecret(),
-	// rules.Doppler(),
-	// rules.DropBoxAPISecret(),
-	// rules.DropBoxLongLivedAPIToken(),
-	// rules.DropBoxShortLivedAPIToken(),
-	// rules.DroneciAccessToken(),
-	// rules.Duffel(),
-	// rules.Dynatrace(),
-	// rules.EasyPost(),
-	// rules.EasyPostTestAPI(),
-	// rules.EtsyAccessToken(),
-	// rules.Facebook(),
-	// rules.FastlyAPIToken(),
-	// rules.FinicityClientSecret(),
-	// rules.FinicityAPIToken(),
-	// rules.FlickrAccessToken(),
-	// rules.FinnhubAccessToken(),
-	// rules.FlutterwavePublicKey(),
-	// rules.FlutterwaveSecretKey(),
-	// rules.FlutterwaveEncKey(),
-	// rules.FrameIO(),
-	// rules.FreshbooksAccessToken(),
-	// rules.GoCardless(),
-	// rules.GCPAPIKey(),
-	// rules.GitHubPat(),
-	// rules.GitHubFineGrainedPat(),
-	// rules.GitHubOauth(),
-	// rules.GitHubApp(),
-	// rules.GitHubRefresh(),
-	// rules.GitlabPat(),
-	// rules.GitlabPipelineTriggerToken(),
-	// rules.GitlabRunnerRegistrationToken(),
-	// rules.GitterAccessToken(),
-	// rules.GrafanaApiKey(),
-	// rules.GrafanaCloudApiToken(),
-	// rules.GrafanaServiceAccountToken(),
-	// rules.Hashicorp(),
-	// rules.HashicorpField(),
-	// rules.Heroku(),
-	// rules.HubSpot(),
-	// rules.HuggingFaceAccessToken(),
-	// rules.HuggingFaceOrganizationApiToken(),
-	// rules.Intercom(),
-	// rules.JFrogAPIKey(),
-	// rules.JFrogIdentityToken(),
-	// rules.JWT(),
-	// rules.JWTBase64(),
-	// rules.KrakenAccessToken(),
-	// rules.KucoinAccessToken(),
-	// rules.KucoinSecretKey(),
-	// rules.LaunchDarklyAccessToken(),
-	// rules.LinearAPIToken(),
-	// rules.LinearClientSecret(),
-	// rules.LinkedinClientID(),
-	// rules.LinkedinClientSecret(),
-	// rules.LobAPIToken(),
-	// rules.LobPubAPIToken(),
-	// rules.MailChimp(),
-	// rules.MailGunPubAPIToken(),
-	// rules.MailGunPrivateAPIToken(),
-	// rules.MailGunSigningKey(),
-	// rules.MapBox(),
-	// rules.MattermostAccessToken(),
-	// rules.MessageBirdAPIToken(),
-	// rules.MessageBirdClientID(),
-	// rules.NetlifyAccessToken(),
-	// rules.NewRelicUserID(),
-	// rules.NewRelicUserKey(),
-	// rules.NewRelicBrowserAPIKey(),
-	// rules.NPM(),
-	// rules.NytimesAccessToken(),
-	// rules.OktaAccessToken(),
-	// rules.OpenAI(),
-	// rules.PlaidAccessID(),
-	// rules.PlaidSecretKey(),
-	// rules.PlaidAccessToken(),
-	// rules.PlanetScalePassword(),
-	// rules.PlanetScaleAPIToken(),
-	// rules.PlanetScaleOAuthToken(),
-	// rules.PostManAPI(),
-	// rules.Prefect(),
-	// rules.PrivateKey(),
-	// rules.PulumiAPIToken(),
-	// rules.PyPiUploadToken(),
-	// rules.RapidAPIAccessToken(),
-	// rules.ReadMe(),
-	// rules.RubyGemsAPIToken(),
-	// rules.ScalingoAPIToken(),
-	// rules.SendbirdAccessID(),
-	// rules.SendbirdAccessToken(),
-	// rules.SendGridAPIToken(),
-	// rules.SendInBlueAPIToken(),
-	// rules.SentryAccessToken(),
-	// rules.ShippoAPIToken(),
-	// rules.ShopifyAccessToken(),
-	// rules.ShopifyCustomAccessToken(),
-	// rules.ShopifyPrivateAppAccessToken(),
-	// rules.ShopifySharedSecret(),
-	// rules.SidekiqSecret(),
-	// rules.SidekiqSensitiveUrl(),
-	// rules.SlackBotToken(),
-	// rules.SlackUserToken(),
-	// rules.SlackAppLevelToken(),
-	// rules.SlackConfigurationToken(),
-	// rules.SlackConfigurationRefreshToken(),
-	// rules.SlackLegacyBotToken(),
-	// rules.SlackLegacyWorkspaceToken(),
-	// rules.SlackLegacyToken(),
-	// rules.SlackWebHookUrl(),
-	// rules.Snyk(),
-	// rules.StripeAccessToken(),
-	// rules.SquareAccessToken(),
-	// rules.SquareSpaceAccessToken(),
-	// rules.SumoLogicAccessID(),
-	// rules.SumoLogicAccessToken(),
-	// rules.TeamsWebhook(),
-	// rules.TelegramBotToken(),
-	// rules.TravisCIAccessToken(),
-	// rules.Twilio(),
-	// rules.TwitchAPIToken(),
-	// rules.TwitterAPIKey(),
-	// rules.TwitterAPISecret(),
-	// rules.TwitterAccessToken(),
-	// rules.TwitterAccessSecret(),
-	// rules.TwitterBearerToken(),
-	// rules.Typeform(),
-	// rules.VaultBatchToken(),
-	// rules.VaultServiceToken(),
-	// rules.YandexAPIKey(),
-	// rules.YandexAWSAccessToken(),
-	// rules.YandexAccessToken(),
-	// rules.ZendeskSecretKey(),
-	// rules.GenericCredential(),
-	// rules.InfracostAPIToken(),
-}
 
 var allowedPayloadTypes = map[string]bool{
 	"application/atom+xml":      true, // https://www.rfc-editor.org/rfc/rfc5023.html
@@ -370,48 +199,22 @@ func findSecret(wg *sync.WaitGroup, bufferCh chan *Buffer) {
 
 	for buffer := range bufferCh {
 		// ...
-		for _, r := range detectionRules {
-			// ...
-			idxs := r.Regex.FindAllIndex(buffer.Content, -1)
-			for _, idx := range idxs {
-				// ...
-				if (idx[0] > 0) && isAlphaNum(buffer.Content[idx[0]-1]) {
-					continue
-				}
+		findings, err := detect.Detect(bytes.NewBuffer(buffer.Content))
+		if err != nil {
+			slog.Error("Unable to read WARC content block", slog.Any("error", err))
+			continue
+		}
 
-				if (idx[1] < len(buffer.Content)-1) && isAlphaNum(buffer.Content[idx[1]+1]) {
-					continue
-				}
-
-				// ...
-				fmt.Printf(
-					"\033[96m%s:%d\033[0m: \033[91m%s\033[0m: \033[37m%s\033[93m%s\033[37m%s\033[0m\n",
-					buffer.TargetURI,
-					idx[0],
-					r.RuleID,
-					cleanUpStrings(string(buffer.Content[max(0, idx[0]-20):idx[0]])),
-					string(buffer.Content[idx[0]:idx[1]]),
-					cleanUpStrings(string(buffer.Content[idx[1]:min(len(buffer.Content), idx[1]+20)])),
-				)
-			}
+		// ...
+		for _, f := range findings {
+			fmt.Printf(
+				"\033[96m%s:%d:%d\033[0m: \033[91m%s\033[0m: \033[93m%s\033[0m\n",
+				buffer.TargetURI,
+				f.StartLine,
+				f.StartColumn,
+				f.ID,
+				f.Secret,
+			)
 		}
 	}
-}
-
-// ...
-func cleanUpStrings(in string) string {
-	return strings.Map(
-		func(r rune) rune {
-			if unicode.IsPrint(r) {
-				return r
-			}
-			return -1
-		},
-		in,
-	)
-}
-
-// ...
-func isAlphaNum(in byte) bool {
-	return (in >= 48 && in <= 57) || (in >= 65 && in <= 90) || (in >= 97 && in <= 122)
 }
