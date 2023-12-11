@@ -38,12 +38,17 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 			Timeout: c.timeout,
 		}
 
-		res, err := hc.Get(u.String())
+		res, err := hc.Get(u.String()) //nolint // res.Body will be closed by the decompression wrapper!
 		if err != nil {
-			return nil, fmt.Errorf("network fetch: %w", err)
+			return nil, fmt.Errorf("HTTP fetch: %w", err)
 		}
 
-		return res.Body, nil
+		r, err := NewWrappedDecompressionReader(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("decompression: %w", err)
+		}
+
+		return r, nil
 
 	case "s3":
 		// Amazon S3
