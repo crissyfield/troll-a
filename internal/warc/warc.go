@@ -2,6 +2,7 @@ package warc
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -28,6 +29,11 @@ const (
 
 	// RecordTypeMetadata is used for metadata.
 	RecordTypeMetadata = "metadata"
+)
+
+var (
+	// ErrBreakTraversal should be returned from the callback to break traversal.
+	ErrBreakTraversal = errors.New("stop traversal")
 )
 
 // Record contains all information about a record.
@@ -109,7 +115,12 @@ func Traverse(r io.Reader, fn RecordCallback) error {
 		})
 
 		if err != nil {
-			return fmt.Errorf("call back: %w", err)
+			if errors.Is(err, ErrBreakTraversal) {
+				// Don't report an error if break was requested
+				return nil
+			}
+
+			return fmt.Errorf("callback: %w", err)
 		}
 
 		// Discard remaining record content

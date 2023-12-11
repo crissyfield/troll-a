@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/crissyfield/troll-a/internal/detect"
 	"github.com/crissyfield/troll-a/internal/fetch"
@@ -45,20 +46,15 @@ func runTest(_ *cobra.Command, args []string) {
 	bufferCh := make(chan *buffer)
 
 	// Spawn go routines to check buffers for secrets
-	var wg sync.WaitGroup
+	eg, ctx := errgroup.WithContext(context.Background())
 
 	for j := 0; j < 8; j++ {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		eg.Go(func() error {
 			for buf := range bufferCh {
 				// Detect secrets
 				findings, err := detect.Detect(bytes.NewBuffer(buf.Content))
 				if err != nil {
-					slog.Error("Unable to read WARC content block", slog.Any("error", err))
-					continue
+					return fmt.Errorf("detect secrets: %w", err)
 				}
 
 				// Print findings
@@ -73,26 +69,35 @@ func runTest(_ *cobra.Command, args []string) {
 					)
 				}
 			}
-		}()
+
+			return nil
+		})
 	}
 
 	// Traverse WARC file
 	err = warc.Traverse(r, func(r *warc.Record) error {
-		// Bail if wrong type or payload
-		if (r.Type != warc.RecordTypeResponse) || !mime.IsText(r.IdentifiedPayloadType) {
-			return nil
-		}
+		select {
+		case <-ctx.Done():
+			// Break traversal if jobs have stopped
+			return warc.ErrBreakTraversal
 
-		// Read full record content
-		content, err := io.ReadAll(r.Content)
-		if err != nil {
-			return fmt.Errorf("read record content: %w", err)
-		}
+		default:
+			// Bail if wrong type or payload
+			if (r.Type != warc.RecordTypeResponse) || !mime.IsText(r.IdentifiedPayloadType) {
+				return nil
+			}
 
-		// Hand over to processing
-		bufferCh <- &buffer{
-			TargetURI: r.TargetURI,
-			Content:   content,
+			// Read full record content
+			content, err := io.ReadAll(r.Content)
+			if err != nil {
+				return fmt.Errorf("read record content: %w", err)
+			}
+
+			// Hand over to processing
+			bufferCh <- &buffer{
+				TargetURI: r.TargetURI,
+				Content:   content,
+			}
 		}
 
 		return nil
@@ -105,7 +110,12 @@ func runTest(_ *cobra.Command, args []string) {
 
 	// Clean up
 	close(bufferCh)
-	wg.Wait()
+
+	err = eg.Wait()
+	if err != nil {
+		slog.Error("Failed to detect secrets", slog.Any("error", err))
+		os.Exit(1) //nolint
+	}
 
 	slog.Info("Done", slog.String("url", args[0]))
 }
