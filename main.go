@@ -1,98 +1,162 @@
 package main
 
 import (
-	"errors"
+	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
-	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"golang.org/x/sync/errgroup"
 
-	"github.com/crissyfield/troll-a/cmd"
+	"github.com/crissyfield/troll-a/pkg/detect"
+	"github.com/crissyfield/troll-a/pkg/fetch"
+	"github.com/crissyfield/troll-a/pkg/mime"
+	"github.com/crissyfield/troll-a/pkg/warc"
 )
 
-// Version will be set during build.
-var Version = "(unknown)"
+var (
+	// Version will be set during build.
+	Version = "(unknown)"
 
-// CmdRoot defines the CLI root command.
-var CmdRoot = &cobra.Command{
-	Use:               "troll-a",
-	Long:              "...",
-	Args:              cobra.NoArgs,
-	Version:           Version,
-	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
-	PersistentPreRunE: setup,
-}
+	// Settings
+	flagLogAsJSON bool
+	flagLogLevel  string
+)
 
-// Initialize CLI options.
-func init() {
-	// Logging
-	CmdRoot.PersistentFlags().String("log-level", "info", "verbosity of logging output")
-	CmdRoot.PersistentFlags().Bool("log-as-json", false, "change logging format to JSON")
-
-	// Subcommands
-	CmdRoot.AddCommand(cmd.CmdTest)
-}
-
-// setup will set up configuration management and logging.
-//
-// Configuration options can be set via the command line, via a configuration file (in the current folder, at
-// "/etc/troll-a/config.yaml" or at "~/.config/troll-a/config.yaml"), and via environment variables (all
-// uppercase and prefixed with "TROLLA_").
-func setup(cmd *cobra.Command, _ []string) error {
-	// Connect all options to Viper
-	err := viper.BindPFlags(cmd.Flags())
-	if err != nil {
-		return fmt.Errorf("bind command line flags: %w", err)
+// main is the main entry point of the command.
+func main() {
+	// Define command
+	var cmd = &cobra.Command{
+		Use:               "troll-a [flags] url",
+		Short:             "Drill into WARC web archives",
+		Args:              cobra.ExactArgs(1),
+		Version:           Version,
+		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+		RunE:              runCommand,
 	}
 
-	// Environment variables
-	viper.SetEnvPrefix("TROLLA")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
-	viper.AutomaticEnv()
+	// Settings
+	cmd.Flags().StringVar(&flagLogLevel, "log-level", "info", "verbosity of logging output")
+	cmd.Flags().BoolVar(&flagLogAsJSON, "log-as-json", false, "change logging format to JSON")
 
-	// Configuration file
-	viper.SetConfigName("config")
-	viper.AddConfigPath("/etc/troll-a")
-	viper.AddConfigPath(os.Getenv("HOME") + "/.config/troll-a")
-	viper.AddConfigPath(".")
-
-	// Configuration file
-	if err := viper.ReadInConfig(); err != nil {
-		// Don't fail if config not found
-		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
-			return fmt.Errorf("read config file: %w", err)
-		}
+	// Execute
+	if err := cmd.Execute(); err != nil {
+		// Error has already been printed, just exit
+		os.Exit(1)
 	}
+}
 
+// runCommand is called when the command is used.
+func runCommand(_ *cobra.Command, args []string) error {
 	// Logging
 	var level slog.Level
-
-	err = level.UnmarshalText([]byte(viper.GetString("log-level")))
-	if err != nil {
-		return fmt.Errorf("parse log level: %w", err)
+	if err := level.UnmarshalText([]byte(flagLogLevel)); err != nil {
+		return fmt.Errorf("invalid argument \"%s\" for \"--log-level\" flag: %w", flagLogLevel, err)
 	}
 
 	var handler slog.Handler
-
-	if viper.GetBool("log-as-json") {
-		// Use JSON handler
+	if flagLogAsJSON {
 		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})
 	} else {
-		// Use text handler
 		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
 	}
 
 	slog.SetDefault(slog.New(handler))
 
-	return nil
-}
-
-// main is the main entry point of the command.
-func main() {
-	if err := CmdRoot.Execute(); err != nil {
-		slog.Error("Unable to execute command", slog.Any("error", err))
+	// Open reader for URL
+	r, err := fetch.URL(args[0], fetch.WithTimeout(4*time.Hour))
+	if err != nil {
+		slog.Error("Failed to fetch WARC file", slog.Any("error", err))
+		os.Exit(1) //nolint
 	}
+
+	defer r.Close()
+
+	// Create buffer channel
+	type buffer struct {
+		TargetURI string
+		Content   []byte
+	}
+
+	bufferCh := make(chan *buffer)
+
+	// Spawn go routines to check buffers for secrets
+	eg, ctx := errgroup.WithContext(context.Background())
+
+	for j := 0; j < 8; j++ {
+		eg.Go(func() error {
+			for buf := range bufferCh {
+				// Detect secrets
+				findings, err := detect.Detect(bytes.NewBuffer(buf.Content))
+				if err != nil {
+					return fmt.Errorf("detect secrets: %w", err)
+				}
+
+				// Print findings
+				for _, f := range findings {
+					fmt.Printf(
+						"\033[96m%s:%d:%d\033[0m: \033[91m%s\033[0m: \033[93m%s\033[0m\n",
+						buf.TargetURI,
+						f.StartLine,
+						f.StartColumn,
+						f.ID,
+						f.Secret,
+					)
+				}
+			}
+
+			return nil
+		})
+	}
+
+	// Traverse WARC file
+	err = warc.Traverse(r, func(r *warc.Record) error {
+		select {
+		case <-ctx.Done():
+			// Break traversal if jobs have stopped
+			return warc.ErrBreakTraversal
+
+		default:
+			// Bail if wrong type or payload
+			if (r.Type != warc.RecordTypeResponse) || !mime.IsText(r.IdentifiedPayloadType) {
+				return nil
+			}
+
+			// Read full record content
+			content, err := io.ReadAll(r.Content)
+			if err != nil {
+				return fmt.Errorf("read record content: %w", err)
+			}
+
+			// Hand over to processing
+			bufferCh <- &buffer{
+				TargetURI: r.TargetURI,
+				Content:   content,
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		slog.Error("Failed to process WARC file", slog.Any("error", err))
+		os.Exit(1) //nolint
+	}
+
+	// Clean up
+	close(bufferCh)
+
+	err = eg.Wait()
+	if err != nil {
+		slog.Error("Failed to detect secrets", slog.Any("error", err))
+		os.Exit(1) //nolint
+	}
+
+	slog.Info("Done", slog.String("url", args[0]))
+
+	return nil
 }
