@@ -3,6 +3,7 @@ module github.com/crissyfield/troll-a
 go 1.21
 
 require (
+	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.1
 	github.com/zricethezav/gitleaks/v8 v8.18.1
@@ -39,6 +40,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
+	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

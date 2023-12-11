@@ -13,41 +13,9 @@ import (
 
 	"github.com/crissyfield/troll-a/internal/detect"
 	"github.com/crissyfield/troll-a/internal/fetch"
+	"github.com/crissyfield/troll-a/internal/mime"
 	"github.com/crissyfield/troll-a/internal/warc"
 )
-
-var allowedPayloadTypes = map[string]bool{
-	"application/atom+xml":      true, // https://www.rfc-editor.org/rfc/rfc5023.html
-	"application/json":          true, // https://www.rfc-editor.org/rfc/rfc8259.html
-	"application/mbox":          true, // https://www.rfc-editor.org/rfc/rfc4155.html
-	"application/msword":        true, // Microsoft Word Document or Document Template
-	"application/pgp-signature": true,
-	"application/rdf+xml":       true,
-	"application/rss+xml":       true,
-	"application/rtf":           true,
-	"application/vnd.ms-excel":  true,
-	"application/x-sh":          true,
-	"application/xhtml+xml":     true,
-	"application/xml":           true,
-	"image/svg+xml":             true,
-	"message/rfc822":            true,
-	"text/css":                  true,
-	"text/csv":                  true,
-	"text/html":                 true,
-	"text/plain":                true,
-	"text/x-chdr":               true,
-	"text/x-diff":               true,
-	"text/x-log":                true,
-	"text/x-perl":               true,
-	"text/x-php":                true,
-	"text/x-vcard":              true,
-}
-
-// Buffer ...
-type Buffer struct {
-	TargetURI string
-	Content   []byte
-}
 
 // CmdTest defines the CLI sub-command 'test'.
 var CmdTest = &cobra.Command{
@@ -55,10 +23,6 @@ var CmdTest = &cobra.Command{
 	Short: "...",
 	Args:  cobra.ExactArgs(1),
 	Run:   runTest,
-}
-
-// Initialize CLI options.
-func init() {
 }
 
 // runTest is called when the "test" command is used.
@@ -72,10 +36,16 @@ func runTest(_ *cobra.Command, args []string) {
 
 	defer r.Close()
 
+	// Create buffer channel
+	type buffer struct {
+		TargetURI string
+		Content   []byte
+	}
+
+	bufferCh := make(chan *buffer)
+
 	// Spawn go routines to check buffers for secrets
 	var wg sync.WaitGroup
-
-	bufferCh := make(chan *Buffer)
 
 	for j := 0; j < 8; j++ {
 		wg.Add(1)
@@ -83,9 +53,9 @@ func runTest(_ *cobra.Command, args []string) {
 		go func() {
 			defer wg.Done()
 
-			for buffer := range bufferCh {
+			for buf := range bufferCh {
 				// Detect secrets
-				findings, err := detect.Detect(bytes.NewBuffer(buffer.Content))
+				findings, err := detect.Detect(bytes.NewBuffer(buf.Content))
 				if err != nil {
 					slog.Error("Unable to read WARC content block", slog.Any("error", err))
 					continue
@@ -95,7 +65,7 @@ func runTest(_ *cobra.Command, args []string) {
 				for _, f := range findings {
 					fmt.Printf(
 						"\033[96m%s:%d:%d\033[0m: \033[91m%s\033[0m: \033[93m%s\033[0m\n",
-						buffer.TargetURI,
+						buf.TargetURI,
 						f.StartLine,
 						f.StartColumn,
 						f.ID,
@@ -109,7 +79,7 @@ func runTest(_ *cobra.Command, args []string) {
 	// Traverse WARC file
 	err = warc.Traverse(r, func(r *warc.Record) error {
 		// Bail if wrong type or payload
-		if (r.Type != warc.RecordTypeResponse) || !allowedPayloadTypes[r.IdentifiedPayloadType] {
+		if (r.Type != warc.RecordTypeResponse) || !mime.IsText(r.IdentifiedPayloadType) {
 			return nil
 		}
 
@@ -120,7 +90,10 @@ func runTest(_ *cobra.Command, args []string) {
 		}
 
 		// Hand over to processing
-		bufferCh <- &Buffer{TargetURI: r.TargetURI, Content: content}
+		bufferCh <- &buffer{
+			TargetURI: r.TargetURI,
+			Content:   content,
+		}
 
 		return nil
 	})
