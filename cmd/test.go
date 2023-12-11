@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -17,6 +16,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zricethezav/gitleaks/v8/cmd/generate/config/rules"
 	"github.com/zricethezav/gitleaks/v8/config"
+
+	"github.com/crissyfield/troll-a/internal/fetch"
 )
 
 // rules ...
@@ -236,21 +237,17 @@ func init() {
 
 // runTest is called when the "test" command is used.
 func runTest(_ *cobra.Command, args []string) {
-	// ...
-	hc := &http.Client{
-		Timeout: 60 * 60 * 4 * time.Second,
-	}
-
-	res, err := hc.Get(args[0])
+	// Read URL
+	ur, err := fetch.URL(args[0], fetch.WithTimeout(4*time.Hour))
 	if err != nil {
 		slog.Error("Unable to fetch WARC file", slog.Any("error", err))
 		os.Exit(1) //nolint
 	}
 
-	defer res.Body.Close()
+	defer ur.Close()
 
 	// Decompress
-	gr, err := gzip.NewReader(res.Body)
+	gr, err := gzip.NewReader(ur)
 	if err != nil {
 		slog.Error("Unable to decompress WARC body", slog.Any("error", err))
 		os.Exit(1) //nolint
