@@ -1,14 +1,11 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +13,7 @@ import (
 
 	"github.com/crissyfield/troll-a/internal/detect"
 	"github.com/crissyfield/troll-a/internal/fetch"
+	"github.com/crissyfield/troll-a/internal/warc"
 )
 
 var allowedPayloadTypes = map[string]bool{
@@ -65,148 +63,76 @@ func init() {
 
 // runTest is called when the "test" command is used.
 func runTest(_ *cobra.Command, args []string) {
-	// Read URL
+	// Open reader for URL
 	r, err := fetch.URL(args[0], fetch.WithTimeout(4*time.Hour))
 	if err != nil {
-		slog.Error("Unable to fetch WARC file", slog.Any("error", err))
+		slog.Error("Failed to fetch WARC file", slog.Any("error", err))
 		os.Exit(1) //nolint
 	}
 
 	defer r.Close()
 
 	// Spawn go routines to check buffers for secrets
+	var wg sync.WaitGroup
+
 	bufferCh := make(chan *Buffer)
-	wg := &sync.WaitGroup{}
 
 	for j := 0; j < 8; j++ {
 		wg.Add(1)
-		go findSecret(wg, bufferCh)
+
+		go func() {
+			defer wg.Done()
+
+			for buffer := range bufferCh {
+				// Detect secrets
+				findings, err := detect.Detect(bytes.NewBuffer(buffer.Content))
+				if err != nil {
+					slog.Error("Unable to read WARC content block", slog.Any("error", err))
+					continue
+				}
+
+				// Print findings
+				for _, f := range findings {
+					fmt.Printf(
+						"\033[96m%s:%d:%d\033[0m: \033[91m%s\033[0m: \033[93m%s\033[0m\n",
+						buffer.TargetURI,
+						f.StartLine,
+						f.StartColumn,
+						f.ID,
+						f.Secret,
+					)
+				}
+			}
+		}()
 	}
 
-	// Buffered IO
-	br := bufio.NewReaderSize(r, 4*1024*1024)
-
-	for {
-		// Read version
-		version, _, err := br.ReadLine()
-		if err == io.EOF {
-			break
+	// Traverse WARC file
+	err = warc.Traverse(r, func(r *warc.Record) error {
+		// Bail if wrong type or payload
+		if (r.Type != warc.RecordTypeResponse) || !allowedPayloadTypes[r.IdentifiedPayloadType] {
+			return nil
 		}
 
+		// Read full record content
+		content, err := io.ReadAll(r.Content)
 		if err != nil {
-			slog.Error("Error while reading WARC record version", slog.Any("error", err))
-			os.Exit(1) //nolint
+			return fmt.Errorf("read record content: %w", err)
 		}
 
-		if !strings.HasPrefix(string(version), "WARC/") {
-			slog.Error("Unknown WARC record version", slog.String("version", string(version)))
-			os.Exit(1) //nolint
-		}
+		// Hand over to processing
+		bufferCh <- &Buffer{TargetURI: r.TargetURI, Content: content}
 
-		// Read headers
-		headers := make(map[string]string)
+		return nil
+	})
 
-		for {
-			// Read header
-			header, isPrefix, err := br.ReadLine()
-			if err != nil {
-				slog.Error("Error while processing WARC record header", slog.Any("error", err))
-				os.Exit(1) //nolint
-			}
-
-			// Exit if the buffer is not big enough (32KiB)
-			if isPrefix {
-				slog.Error("WARC record header seems too big", slog.Any("error", err))
-				os.Exit(1) //nolint
-			}
-
-			// Stop reading headers on empty line
-			if len(header) == 0 {
-				break
-			}
-
-			// Split header into key and value
-			parts := strings.SplitN(string(header), ":", 2)
-			if len(parts) == 2 {
-				key := strings.ToLower(parts[0])
-				value := strings.TrimSpace(parts[1])
-
-				headers[key] = value
-			}
-		}
-
-		// Extract length of record content
-		length, err := strconv.Atoi(headers["content-length"])
-		if err != nil {
-			slog.Error("Unable to read record content length", slog.Any("error", err))
-			os.Exit(1) //nolint
-		}
-
-		// ...
-		cr := io.LimitReader(br, int64(length))
-
-		if (headers["warc-type"] == "response") && allowedPayloadTypes[headers["warc-identified-payload-type"]] {
-			// ...
-			content, err := io.ReadAll(cr)
-			if err != nil {
-				slog.Error("Unable to read content block", slog.Any("error", err))
-				os.Exit(1) //nolint
-			}
-
-			bufferCh <- &Buffer{
-				TargetURI: headers["warc-target-uri"],
-				Content:   content,
-			}
-		}
-
-		// Discard remaining content block
-		_, err = io.Copy(io.Discard, cr)
-		if err != nil {
-			slog.Error("Unable to discard remaining content block", slog.Any("error", err))
-			os.Exit(1) //nolint
-		}
-
-		// Skip two empty lines
-		for i := 0; i < 2; i++ {
-			boundary, _, err := br.ReadLine()
-			if (err != nil) && (err != io.EOF) {
-				slog.Error("Unable to read WARC record boundary", slog.Any("error", err))
-				os.Exit(1) //nolint
-			}
-
-			if len(boundary) != 0 {
-				slog.Error("WARC record boundary not empty", slog.Any("error", err))
-				os.Exit(1) //nolint
-			}
-		}
+	if err != nil {
+		slog.Error("Failed to process WARC file", slog.Any("error", err))
+		os.Exit(1) //nolint
 	}
+
+	// Clean up
+	close(bufferCh)
+	wg.Wait()
 
 	slog.Info("Done", slog.String("url", args[0]))
-}
-
-// ...
-func findSecret(wg *sync.WaitGroup, bufferCh chan *Buffer) {
-	// ...
-	defer wg.Done()
-
-	for buffer := range bufferCh {
-		// ...
-		findings, err := detect.Detect(bytes.NewBuffer(buffer.Content))
-		if err != nil {
-			slog.Error("Unable to read WARC content block", slog.Any("error", err))
-			continue
-		}
-
-		// ...
-		for _, f := range findings {
-			fmt.Printf(
-				"\033[96m%s:%d:%d\033[0m: \033[91m%s\033[0m: \033[93m%s\033[0m\n",
-				buffer.TargetURI,
-				f.StartLine,
-				f.StartColumn,
-				f.ID,
-				f.Secret,
-			)
-		}
-	}
 }
