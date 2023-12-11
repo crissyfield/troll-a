@@ -12,10 +12,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/crissyfield/troll-a/internal/detect"
-	"github.com/crissyfield/troll-a/internal/fetch"
-	"github.com/crissyfield/troll-a/internal/mime"
-	"github.com/crissyfield/troll-a/internal/warc"
+	"github.com/crissyfield/troll-a/pkg/detect"
+	"github.com/crissyfield/troll-a/pkg/fetch"
+	"github.com/crissyfield/troll-a/pkg/mime"
+	"github.com/crissyfield/troll-a/pkg/warc"
 )
 
 // CmdTest defines the CLI sub-command 'test'.
