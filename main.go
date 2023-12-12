@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/crissyfield/troll-a/pkg/detect"
+	"github.com/crissyfield/troll-a/pkg/detect/preset"
 	"github.com/crissyfield/troll-a/pkg/fetch"
 	"github.com/crissyfield/troll-a/pkg/mime"
 	"github.com/crissyfield/troll-a/pkg/warc"
@@ -67,6 +68,13 @@ func runCommand(_ *cobra.Command, args []string) error {
 
 	slog.SetDefault(slog.New(handler))
 
+	// Create detector on given rules preset
+	detector, err := detect.NewDetector(preset.All)
+	if err != nil {
+		slog.Error("Failed to create detector", slog.Any("error", err))
+		os.Exit(1) //nolint
+	}
+
 	// Open reader for URL
 	r, err := fetch.URL(args[0], fetch.WithTimeout(4*time.Hour))
 	if err != nil {
@@ -91,7 +99,7 @@ func runCommand(_ *cobra.Command, args []string) error {
 		eg.Go(func() error {
 			for buf := range bufferCh {
 				// Detect secrets
-				findings, err := detect.Detect(bytes.NewBuffer(buf.Content))
+				findings, err := detector.Detect(bytes.NewBuffer(buf.Content))
 				if err != nil {
 					return fmt.Errorf("detect secrets: %w", err)
 				}

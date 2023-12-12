@@ -1,12 +1,12 @@
-package detect
+package preset
 
 import (
 	"github.com/zricethezav/gitleaks/v8/cmd/generate/config/rules"
 	"github.com/zricethezav/gitleaks/v8/config"
 )
 
-// AllRules is a list of all detection rules.
-var AllRules = []*config.Rule{
+// All is a list of all detection rules.
+var All = []*config.Rule{
 	rules.AdafruitAPIKey(),
 	rules.AdobeClientID(),
 	rules.AdobeClientSecret(),

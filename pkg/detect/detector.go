@@ -9,10 +9,30 @@ import (
 	"github.com/zricethezav/gitleaks/v8/config"
 )
 
-// state wraps some internal state for the detection.
-type state struct {
-	raw     string   // The string to detect secrets for.
-	locator *Locator // A locator to turn indexes into lines and columns.
+// Detector wraps a set of rules to detect secrets.
+type Detector struct {
+	rules         []*config.Rule
+	combinedRegep CombinedRegexp
+}
+
+// NewDetector creates a new Detector object with the given set of rules.
+func NewDetector(rules []*config.Rule) (*Detector, error) {
+	// Create combined regular expression from all rules
+	exprs := make([]string, len(rules))
+
+	for i, r := range rules {
+		exprs[i] = r.Regex.String()
+	}
+
+	combinedRegexp, err := CompileCombinedRegexp(exprs)
+	if err != nil {
+		return nil, fmt.Errorf("create combined regular expression: %w", err)
+	}
+
+	return &Detector{
+		rules:         rules,
+		combinedRegep: combinedRegexp,
+	}, nil
 }
 
 // Finding wraps all relevant information for a finding.
@@ -28,21 +48,14 @@ type Finding struct {
 	EndColumn   int    // Line of the column end.
 }
 
-// combinedRegexp combines all rules regexp's.
-var combinedRegexp = func() CombinedRegexp {
-	// Extract expression from all rules
-	exprs := make([]string, len(detectionRules))
-
-	for i, r := range detectionRules {
-		exprs[i] = r.Regex.String()
-	}
-
-	// Compile
-	return MustCompileCombinedRegexp(exprs)
-}()
+// state wraps some internal state for the detection.
+type state struct {
+	raw     string   // The string to detect secrets for.
+	locator *Locator // A locator to turn indexes into lines and columns.
+}
 
 // Detect will detect all secrets in the given reader stream.
-func Detect(r io.Reader) ([]*Finding, error) {
+func (d *Detector) Detect(r io.Reader) ([]*Finding, error) {
 	// Turn the reader into a string
 	var s state
 
@@ -60,14 +73,14 @@ func Detect(r io.Reader) ([]*Finding, error) {
 	}
 
 	// Check if any of the rules regexp's matches
-	if !combinedRegexp.MatchString(s.raw) {
+	if !d.combinedRegep.MatchString(s.raw) {
 		return nil, nil
 	}
 
 	// Run through all detection rules and gather findings
 	var findings []*Finding
 
-	for _, r := range detectionRules {
+	for _, r := range d.rules {
 		findings = append(findings, detectRule(&s, r)...)
 	}
 
