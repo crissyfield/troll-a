@@ -4,17 +4,17 @@ import (
 	"time"
 )
 
-// config wraps all settings in a struct.
-type config struct {
+// settings wraps all fetching settings.
+type settings struct {
 	timeout time.Duration
 }
 
-// Option is a function mutating the config.
-type Option func(*config)
+// Option is a function mutating the settings.
+type Option func(*settings)
 
 // WithTimeout with set the timeout duration for the fetch operation.
-func WithTimeout(timeout time.Duration) func(*config) {
-	return func(c *config) {
-		c.timeout = timeout
+func WithTimeout(timeout time.Duration) func(*settings) {
+	return func(s *settings) {
+		s.timeout = timeout
 	}
 }

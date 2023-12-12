@@ -1,11 +1,17 @@
 package fetch
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 const (
@@ -15,13 +21,13 @@ const (
 
 // URL with fetch address addr using the optional options.
 func URL(addr string, opts ...Option) (io.ReadCloser, error) {
-	// Build config
-	c := &config{
+	// Bootstrap settings
+	settings := &settings{
 		timeout: DefaultTimeout,
 	}
 
 	for _, o := range opts {
-		o(c)
+		o(settings)
 	}
 
 	// Parse URL
@@ -34,13 +40,11 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 	switch u.Scheme {
 	case "http", "https":
 		// HTTP/HTTPS
-		hc := &http.Client{
-			Timeout: c.timeout,
-		}
+		hc := &http.Client{Timeout: settings.timeout}
 
 		res, err := hc.Get(u.String()) //nolint // res.Body will be closed by the decompression wrapper!
 		if err != nil {
-			return nil, fmt.Errorf("HTTP fetch: %w", err)
+			return nil, fmt.Errorf("HTTP fetch [url=%s]: %w", u.String(), err)
 		}
 
 		r, err := NewWrappedDecompressionReader(res.Body)
@@ -52,7 +56,30 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 
 	case "s3":
 		// Amazon S3
-		return nil, fmt.Errorf("schema 's3' not yet supported")
+		hc := &http.Client{Timeout: settings.timeout}
+
+		cfg, err := config.LoadDefaultConfig(context.Background(), config.WithHTTPClient(hc))
+		if err != nil {
+			return nil, fmt.Errorf("load default AWS config: %w", err)
+		}
+
+		s3c := s3.NewFromConfig(cfg)
+
+		res, err := s3c.GetObject(context.Background(), &s3.GetObjectInput{
+			Bucket: aws.String(u.Host),
+			Key:    aws.String(strings.TrimPrefix(u.Path, "/")),
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("S3 fetch [url=%s]: %w", u.String(), err)
+		}
+
+		r, err := NewWrappedDecompressionReader(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("decompression: %w", err)
+		}
+
+		return r, nil
 
 	default:
 		// Not supported

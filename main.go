@@ -25,7 +25,7 @@ var (
 	// Version will be set during build.
 	Version = "(unknown)"
 
-	// Settings
+	// Configuration
 	configVerbosity   = cli.InfoLogLevel
 	configJSON        = false
 	configRulesPreset = cli.SecretRulesPreset
