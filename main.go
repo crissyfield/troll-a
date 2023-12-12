@@ -61,14 +61,14 @@ func runCommand(_ *cobra.Command, args []string) {
 	var level slog.Level
 	_ = level.UnmarshalText([]byte(configVerbosity))
 
-	var handler slog.Handler
+	var slogErr, slogOut *slog.Logger
 	if configJSON {
-		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})
+		slogErr = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+		slogOut = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	} else {
-		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
+		slogErr = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+		slogOut = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
-
-	slog.SetDefault(slog.New(handler))
 
 	// Create detector on given rules preset
 	var detector *detect.Detector
@@ -90,7 +90,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	// Open reader for URL
 	r, err := fetch.URL(args[0], fetch.WithTimeout(4*time.Hour))
 	if err != nil {
-		slog.Error("Failed to fetch WARC file", slog.Any("error", err))
+		slogErr.Error("Failed to fetch WARC file", slog.Any("error", err))
 		os.Exit(1) //nolint
 	}
 
@@ -118,15 +118,14 @@ func runCommand(_ *cobra.Command, args []string) {
 
 				// Print findings
 				for _, f := range findings {
-					fmt.Printf(
-						"\033[96m%s:%d:%d\033[0m: \033[91m%s\033[0m: \033[37m%s\033[93m%s \033[37m%s\033[0m\n",
-						buf.TargetURI,
-						f.Location.StartLine,
-						f.Location.StartColumn,
-						f.ID,
-						string(buf.Content)[max(f.Location.StartLineIndex, f.Location.StartIdx-32):f.Location.StartIdx],
-						f.Match,
-						string(buf.Content)[f.Location.EndIdx:min(f.Location.EndIdx+32, f.Location.EndLineIndex)],
+					slogOut.Info(
+						"Matched",
+						slog.String("uri", buf.TargetURI),
+						slog.Int("line", f.Location.StartLine),
+						slog.Int("column", f.Location.StartColumn),
+						slog.String("rule", f.ID),
+						slog.String("secret", f.Secret),
+						slog.String("full", string(buf.Content)[f.Location.StartLineIdx:f.Location.EndLineIdx]),
 					)
 				}
 			}
@@ -165,7 +164,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	})
 
 	if err != nil {
-		slog.Error("Failed to process WARC file", slog.Any("error", err))
+		slogErr.Error("Failed to process WARC file", slog.Any("error", err))
 		os.Exit(1) //nolint
 	}
 
@@ -174,9 +173,9 @@ func runCommand(_ *cobra.Command, args []string) {
 
 	err = eg.Wait()
 	if err != nil {
-		slog.Error("Failed to detect secrets", slog.Any("error", err))
+		slogErr.Error("Failed to detect secrets", slog.Any("error", err))
 		os.Exit(1) //nolint
 	}
 
-	slog.Info("Done", slog.String("url", args[0]))
+	slogErr.Info("Done", slog.String("url", args[0]))
 }

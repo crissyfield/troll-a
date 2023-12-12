@@ -137,7 +137,7 @@ func detectRule(s *state, r *config.Rule) []*Finding {
 
 		case "line":
 			// Check for line
-			if r.Allowlist.RegexAllowed(s.raw[loc.StartLineIndex:loc.EndLineIndex]) {
+			if r.Allowlist.RegexAllowed(s.raw[loc.StartLineIdx:loc.EndLineIdx]) {
 				continue
 			}
 

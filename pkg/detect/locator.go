@@ -25,14 +25,14 @@ func NewLocator(s string) *Locator {
 
 // Location represents a location in a string.
 type Location struct {
-	StartIdx       int
-	EndIdx         int
-	StartLine      int
-	EndLine        int
-	StartColumn    int
-	EndColumn      int
-	StartLineIndex int
-	EndLineIndex   int
+	StartIdx     int
+	EndIdx       int
+	StartLine    int
+	EndLine      int
+	StartColumn  int
+	EndColumn    int
+	StartLineIdx int
+	EndLineIdx   int
 }
 
 // Find returns the location for a given index pair.
@@ -57,13 +57,13 @@ func (l *Locator) Find(startIdx int, endIdx int) *Location {
 
 	// Return the location
 	return &Location{
-		StartIdx:       startIdx,
-		EndIdx:         endIdx,
-		StartLine:      startLine,
-		EndLine:        endLine,
-		StartColumn:    startIdx - l.newLineIndexes[startLine],
-		EndColumn:      endIdx - l.newLineIndexes[endLine],
-		StartLineIndex: l.newLineIndexes[startLine],
-		EndLineIndex:   l.newLineIndexes[endLine+1] - 1,
+		StartIdx:     startIdx,
+		EndIdx:       endIdx,
+		StartLine:    startLine,
+		EndLine:      endLine,
+		StartColumn:  startIdx - l.newLineIndexes[startLine],
+		EndColumn:    endIdx - l.newLineIndexes[endLine],
+		StartLineIdx: l.newLineIndexes[startLine],
+		EndLineIdx:   l.newLineIndexes[endLine+1] - 1,
 	}
 }
