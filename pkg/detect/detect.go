@@ -28,6 +28,19 @@ type Finding struct {
 	EndColumn   int    // Line of the column end.
 }
 
+// combinedRegexp combines all rules regexp's.
+var combinedRegexp = func() CombinedRegexp {
+	// Extract expression from all rules
+	exprs := make([]string, len(detectionRules))
+
+	for i, r := range detectionRules {
+		exprs[i] = r.Regex.String()
+	}
+
+	// Compile
+	return MustCompileCombinedRegexp(exprs)
+}()
+
 // Detect will detect all secrets in the given reader stream.
 func Detect(r io.Reader) ([]*Finding, error) {
 	// Turn the reader into a string
@@ -44,6 +57,11 @@ func Detect(r io.Reader) ([]*Finding, error) {
 		}
 
 		s.raw = string(d)
+	}
+
+	// Check if any of the rules regexp's matches
+	if !combinedRegexp.MatchString(s.raw) {
+		return nil, nil
 	}
 
 	// Run through all detection rules and gather findings
