@@ -28,6 +28,7 @@ var (
 	// Configuration
 	configVerbosity   = cli.InfoLogLevel
 	configJSON        = false
+	configJobs        = uint(8)
 	configRulesPreset = cli.SecretRulesPreset
 )
 
@@ -45,7 +46,8 @@ func main() {
 
 	// Settings
 	cmd.Flags().VarP(&configVerbosity, "verbosity", "V", `verbosity of logging output, allowed: "debug", "info", "warn", "error"`)
-	cmd.Flags().BoolVarP(&configJSON, "json", "j", false, `change output format to JSON`)
+	cmd.Flags().BoolVarP(&configJSON, "json", "s", false, `change output format to JSON`)
+	cmd.Flags().UintVarP(&configJobs, "jobs", "j", configJobs, `number of concurrent jobs to detect secrets`)
 	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use, allowed: "all", "most", "secret"`)
 
 	// Execute
@@ -107,7 +109,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	// Spawn go routines to check buffers for secrets
 	eg, ctx := errgroup.WithContext(context.Background())
 
-	for j := 0; j < 8; j++ {
+	for j := uint(0); j < configJobs; j++ {
 		eg.Go(func() error {
 			for buf := range bufferCh {
 				// Detect secrets
