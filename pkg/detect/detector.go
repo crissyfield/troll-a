@@ -9,30 +9,32 @@ import (
 	"github.com/zricethezav/gitleaks/v8/config"
 )
 
+// RuleFunction is a function that generates a rule.
+type RuleFunction func() *config.Rule
+
 // Detector wraps a set of rules to detect secrets.
 type Detector struct {
 	rules         []*config.Rule
 	combinedRegep CombinedRegexp
 }
 
-// NewDetector creates a new Detector object with the given set of rules.
-func NewDetector(rules []*config.Rule) (*Detector, error) {
-	// Create combined regular expression from all rules
+// NewDetector creates a new Detector object with rules from the given set of rule functions.
+func NewDetector(ruleFns []RuleFunction) *Detector {
+	// Create rules and extract raw expressions
+	rules := make([]*config.Rule, len(ruleFns))
 	exprs := make([]string, len(rules))
 
-	for i, r := range rules {
+	for i, fn := range ruleFns {
+		r := fn()
+		rules[i] = r
 		exprs[i] = r.Regex.String()
 	}
 
-	combinedRegexp, err := CompileCombinedRegexp(exprs)
-	if err != nil {
-		return nil, fmt.Errorf("create combined regular expression: %w", err)
-	}
-
+	// Return detector
 	return &Detector{
 		rules:         rules,
-		combinedRegep: combinedRegexp,
-	}, nil
+		combinedRegep: MustCompileCombinedRegexp(exprs),
+	}
 }
 
 // Finding wraps all relevant information for a finding.

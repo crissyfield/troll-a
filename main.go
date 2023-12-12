@@ -69,11 +69,7 @@ func runCommand(_ *cobra.Command, args []string) error {
 	slog.SetDefault(slog.New(handler))
 
 	// Create detector on given rules preset
-	detector, err := detect.NewDetector(preset.All)
-	if err != nil {
-		slog.Error("Failed to create detector", slog.Any("error", err))
-		os.Exit(1) //nolint
-	}
+	detector := detect.NewDetector(preset.All)
 
 	// Open reader for URL
 	r, err := fetch.URL(args[0], fetch.WithTimeout(4*time.Hour))
