@@ -24,11 +24,9 @@ var Secret = []detect.RuleFunction{
 	rules.DigitalOceanRefreshToken,       // DigitalOcean OAuth Refresh Token
 	rules.DiscordClientSecret,            // Discord client secret
 	rules.DroneciAccessToken,             // Droneci Access Token
-	rules.DropBoxAPISecret,               // Dropbox API secret
 	rules.DropBoxLongLivedAPIToken,       // Dropbox long lived API token
 	rules.DropBoxShortLivedAPIToken,      // Dropbox short lived API token
 	rules.EtsyAccessToken,                // Etsy Access Token
-	rules.Facebook,                       // Facebook Access Token
 	rules.FinicityClientSecret,           // Finicity Client Secret
 	rules.FinnhubAccessToken,             // Finnhub Access Token
 	rules.FlickrAccessToken,              // Flickr Access Token
@@ -44,7 +42,6 @@ var Secret = []detect.RuleFunction{
 	rules.KrakenAccessToken,              // Kraken Access Token
 	rules.KucoinAccessToken,              // Kucoin Access Token
 	rules.KucoinSecretKey,                // Kucoin Secret Key
-	rules.LaunchDarklyAccessToken,        // Launchdarkly Access Token
 	rules.LinearClientSecret,             // Linear Client Secret
 	rules.LinkedinClientSecret,           // LinkedIn Client secret
 	rules.MailGunPrivateAPIToken,         // Mailgun private API token
@@ -56,11 +53,9 @@ var Secret = []detect.RuleFunction{
 	rules.PlaidAccessToken,               // Plaid API Token
 	rules.PlaidSecretKey,                 // Plaid Secret key
 	rules.PlanetScalePassword,            // PlanetScale password
-	rules.PrivateKey,                     // Private Key
 	rules.RapidAPIAccessToken,            // RapidAPI Access Token
 	rules.SendbirdAccessToken,            // Sendbird Access Token
 	rules.SentryAccessToken,              // Sentry Access Token
-	rules.ShopifyAccessToken,             // Shopify access token
 	rules.ShopifyCustomAccessToken,       // Shopify custom access token
 	rules.ShopifyPrivateAppAccessToken,   // Shopify private app access token
 	rules.ShopifySharedSecret,            // Shopify shared secret
@@ -69,7 +64,6 @@ var Secret = []detect.RuleFunction{
 	rules.SlackConfigurationToken,        // Slack Configuration access token
 	rules.SquareAccessToken,              // Square Access Token
 	rules.SquareSpaceAccessToken,         // Squarespace Access Token
-	rules.SumoLogicAccessToken,           // SumoLogic Access Token
 	rules.TravisCIAccessToken,            // Travis CI Access Token
 	rules.TwitterAPISecret,               // Twitter API Secret
 	rules.TwitterAccessSecret,            // Twitter Access Secret
