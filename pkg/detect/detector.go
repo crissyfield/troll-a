@@ -39,15 +39,11 @@ func NewDetector(ruleFns []RuleFunction) *Detector {
 
 // Finding wraps all relevant information for a finding.
 type Finding struct {
-	ID          string // ID of the rule responsible for the finding.
-	Description string // Description of the secret found.
-	Secret      string // The actual secret.
-	Match       string // The match containing the secret.
-	Line        string // The line containing the match.
-	StartLine   int    // Line of the match start.
-	StartColumn int    // Column of the match start.
-	EndLine     int    // Line of the match end.
-	EndColumn   int    // Line of the column end.
+	ID          string    // ID of the rule responsible for the finding.
+	Description string    // Description of the secret found.
+	Secret      string    // The actual secret.
+	Match       string    // The match containing the secret.
+	Location    *Location // The location of the match.
 }
 
 // state wraps some internal state for the detection.
@@ -141,7 +137,7 @@ func detectRule(s *state, r *config.Rule) []*Finding {
 
 		case "line":
 			// Check for line
-			if r.Allowlist.RegexAllowed(s.raw[loc.startLineIndex:loc.endLineIndex]) {
+			if r.Allowlist.RegexAllowed(s.raw[loc.StartLineIndex:loc.EndLineIndex]) {
 				continue
 			}
 
@@ -184,11 +180,7 @@ func detectRule(s *state, r *config.Rule) []*Finding {
 			Description: r.Description,
 			Secret:      secret,
 			Match:       match,
-			Line:        s.raw[loc.startLineIndex:loc.endLineIndex],
-			StartLine:   loc.startLine,
-			EndLine:     loc.endLine,
-			StartColumn: loc.startColumn,
-			EndColumn:   loc.endColumn,
+			Location:    loc,
 		})
 	}
 

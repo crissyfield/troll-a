@@ -119,12 +119,14 @@ func runCommand(_ *cobra.Command, args []string) {
 				// Print findings
 				for _, f := range findings {
 					fmt.Printf(
-						"\033[96m%s:%d:%d\033[0m: \033[91m%s\033[0m: \033[93m%s\033[0m\n",
+						"\033[96m%s:%d:%d\033[0m: \033[91m%s\033[0m: \033[37m%s\033[93m%s \033[37m%s\033[0m\n",
 						buf.TargetURI,
-						f.StartLine,
-						f.StartColumn,
+						f.Location.StartLine,
+						f.Location.StartColumn,
 						f.ID,
-						f.Secret,
+						string(buf.Content)[max(f.Location.StartLineIndex, f.Location.StartIdx-32):f.Location.StartIdx],
+						f.Match,
+						string(buf.Content)[f.Location.EndIdx:min(f.Location.EndIdx+32, f.Location.EndLineIndex)],
 					)
 				}
 			}
