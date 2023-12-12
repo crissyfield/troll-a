@@ -17,6 +17,8 @@ import (
 	"github.com/crissyfield/troll-a/pkg/fetch"
 	"github.com/crissyfield/troll-a/pkg/mime"
 	"github.com/crissyfield/troll-a/pkg/warc"
+
+	"github.com/crissyfield/troll-a/internal/cli"
 )
 
 var (
@@ -24,8 +26,9 @@ var (
 	Version = "(unknown)"
 
 	// Settings
-	flagLogAsJSON bool
-	flagLogLevel  string
+	configVerbosity   = cli.InfoLogLevel
+	configJSON        = false
+	configRulesPreset = cli.SecretRulesPreset
 )
 
 // main is the main entry point of the command.
@@ -37,12 +40,13 @@ func main() {
 		Args:              cobra.ExactArgs(1),
 		Version:           Version,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
-		RunE:              runCommand,
+		Run:               runCommand,
 	}
 
 	// Settings
-	cmd.Flags().StringVar(&flagLogLevel, "log-level", "info", "verbosity of logging output")
-	cmd.Flags().BoolVar(&flagLogAsJSON, "log-as-json", false, "change logging format to JSON")
+	cmd.Flags().VarP(&configVerbosity, "verbosity", "V", `verbosity of logging output, allowed: "debug", "info", "warn", "error"`)
+	cmd.Flags().BoolVarP(&configJSON, "json", "j", false, `change output format to JSON`)
+	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use, allowed: "all", "most", "secret"`)
 
 	// Execute
 	if err := cmd.Execute(); err != nil {
@@ -52,15 +56,13 @@ func main() {
 }
 
 // runCommand is called when the command is used.
-func runCommand(_ *cobra.Command, args []string) error {
+func runCommand(_ *cobra.Command, args []string) {
 	// Logging
 	var level slog.Level
-	if err := level.UnmarshalText([]byte(flagLogLevel)); err != nil {
-		return fmt.Errorf("invalid argument \"%s\" for \"--log-level\" flag: %w", flagLogLevel, err)
-	}
+	_ = level.UnmarshalText([]byte(configVerbosity))
 
 	var handler slog.Handler
-	if flagLogAsJSON {
+	if configJSON {
 		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})
 	} else {
 		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
@@ -69,7 +71,21 @@ func runCommand(_ *cobra.Command, args []string) error {
 	slog.SetDefault(slog.New(handler))
 
 	// Create detector on given rules preset
-	detector := detect.NewDetector(preset.Secret)
+	var detector *detect.Detector
+
+	switch configRulesPreset {
+	case cli.AllRulesPreset:
+		// All rules
+		detector = detect.NewDetector(preset.All)
+
+	case cli.MostRulesPreset:
+		// Most rules
+		detector = detect.NewDetector(preset.Most)
+
+	case cli.SecretRulesPreset:
+		// Secret rules
+		detector = detect.NewDetector(preset.Secret)
+	}
 
 	// Open reader for URL
 	r, err := fetch.URL(args[0], fetch.WithTimeout(4*time.Hour))
@@ -161,6 +177,4 @@ func runCommand(_ *cobra.Command, args []string) error {
 	}
 
 	slog.Info("Done", slog.String("url", args[0]))
-
-	return nil
 }
