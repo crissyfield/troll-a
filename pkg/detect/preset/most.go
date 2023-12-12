@@ -6,8 +6,8 @@ import (
 	"github.com/crissyfield/troll-a/pkg/detect"
 )
 
-// All is a list of all detection rules.
-var All = []detect.RuleFunction{
+// Most is a list of most detection rules.
+var Most = []detect.RuleFunction{
 	rules.AWS,                             // AWS
 	rules.AdafruitAPIKey,                  // Adafruit API Key
 	rules.AdobeClientID,                   // Adobe Client ID (OAuth Web)
@@ -62,8 +62,6 @@ var All = []detect.RuleFunction{
 	rules.FlutterwaveSecretKey,            // Flutterwave Secret Key
 	rules.FrameIO,                         // Frame.io API token
 	rules.FreshbooksAccessToken,           // Freshbooks Access Token
-	rules.GCPAPIKey,                       // GCP API key
-	rules.GenericCredential,               // Generic API Key
 	rules.GitHubApp,                       // GitHub App Token
 	rules.GitHubFineGrainedPat,            // GitHub Fine-Grained Personal Access Token
 	rules.GitHubOauth,                     // GitHub OAuth Access Token
@@ -87,8 +85,6 @@ var All = []detect.RuleFunction{
 	rules.Intercom,                        // Intercom API Token
 	rules.JFrogAPIKey,                     // JFrog API Key
 	rules.JFrogIdentityToken,              // JFrog Identity Token
-	rules.JWT,                             // JSON Web Token
-	rules.JWTBase64,                       // Base64-encoded JSON Web Token
 	rules.KrakenAccessToken,               // Kraken Access Token
 	rules.KucoinAccessToken,               // Kucoin Access Token
 	rules.KucoinSecretKey,                 // Kucoin Secret Key
@@ -154,7 +150,6 @@ var All = []detect.RuleFunction{
 	rules.Snyk,                            // Snyk API token
 	rules.SquareAccessToken,               // Square Access Token
 	rules.SquareSpaceAccessToken,          // Squarespace Access Token
-	rules.StripeAccessToken,               // Stripe Access Token
 	rules.SumoLogicAccessID,               // SumoLogic Access ID
 	rules.SumoLogicAccessToken,            // SumoLogic Access Token
 	rules.TeamsWebhook,                    // Microsoft Teams Webhook
