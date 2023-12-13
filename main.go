@@ -31,6 +31,7 @@ var (
 	configJobs        = uint(8)
 	configBackoff     = cli.BackoffStrategy{Val: cli.BackoffStrategyValNone}
 	configRulesPreset = cli.RulesPreset{Val: preset.Secret}
+	configEnclosed    = false
 )
 
 // main is the main entry point of the command.
@@ -47,10 +48,11 @@ func main() {
 
 	// Settings
 	cmd.Flags().VarP(&configLogLevel, "verbosity", "V", `verbosity of logging output, allowed: "debug", "info", "warn", "error"`)
-	cmd.Flags().BoolVarP(&configJSON, "json", "s", false, `change output format to JSON`)
+	cmd.Flags().BoolVarP(&configJSON, "json", "s", configJSON, `change output format to JSON`)
 	cmd.Flags().UintVarP(&configJobs, "jobs", "j", configJobs, `number of concurrent jobs to detect secrets`)
 	cmd.Flags().VarP(&configBackoff, "backoff", "b", `backoff strategy for fetching, allowed: "none", "constant", "exponential", "zero"`)
 	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use, allowed: "all", "most", "secret"`)
+	cmd.Flags().BoolVarP(&configEnclosed, "enclosed", "e", configEnclosed, `only report secrets that are enclosed`)
 
 	// Execute
 	if err := cmd.Execute(); err != nil {
@@ -73,7 +75,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	}
 
 	// Create detector on given rules preset
-	detector := detect.NewDetector(configRulesPreset.Val)
+	detector := detect.NewDetector(configRulesPreset.Val, configEnclosed)
 
 	// Open reader for URL
 	r, err := fetch.URL(
@@ -118,7 +120,7 @@ func runCommand(_ *cobra.Command, args []string) {
 						slog.Int("column", f.Location.StartColumn),
 						slog.String("rule", f.ID),
 						slog.String("secret", f.Secret),
-						slog.String("full", string(buf.Content)[f.Location.StartLineIdx:f.Location.EndLineIdx]),
+						slog.String("full", f.Location.Line(string(buf.Content))),
 					)
 				}
 			}

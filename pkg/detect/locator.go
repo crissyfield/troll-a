@@ -23,18 +23,6 @@ func NewLocator(s string) *Locator {
 	return &Locator{newLineIndexes: newLineIndexes}
 }
 
-// Location represents a location in a string.
-type Location struct {
-	StartIdx     int
-	EndIdx       int
-	StartLine    int
-	EndLine      int
-	StartColumn  int
-	EndColumn    int
-	StartLineIdx int
-	EndLineIdx   int
-}
-
 // Find returns the location for a given index pair.
 func (l *Locator) Find(startIdx int, endIdx int) *Location {
 	// Find start line

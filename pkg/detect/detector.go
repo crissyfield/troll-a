@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 
 	"github.com/zricethezav/gitleaks/v8/config"
 )
@@ -16,10 +17,11 @@ type RuleFunction func() *config.Rule
 type Detector struct {
 	rules         []*Rule
 	combinedRegep AbstractRegexp
+	enclosed      bool
 }
 
 // NewDetector creates a new Detector object with rules from the given set of rule functions.
-func NewDetector(ruleFns []RuleFunction) *Detector {
+func NewDetector(ruleFns []RuleFunction, enclosed bool) *Detector {
 	// Create rules and extract raw expressions
 	rules := make([]*Rule, len(ruleFns))
 	exprs := make([]string, len(rules))
@@ -43,6 +45,7 @@ func NewDetector(ruleFns []RuleFunction) *Detector {
 	return &Detector{
 		rules:         rules,
 		combinedRegep: MustCompileRegexp(strings.Join(exprs, "|")),
+		enclosed:      enclosed,
 	}
 }
 
@@ -88,14 +91,14 @@ func (d *Detector) Detect(r io.Reader) ([]*Finding, error) {
 	var findings []*Finding
 
 	for _, r := range d.rules {
-		findings = append(findings, detectRule(&s, r)...)
+		findings = append(findings, d.detectRule(&s, r)...)
 	}
 
 	return findings, nil
 }
 
 // detectRule will detect a single rule.
-func detectRule(s *state, r *Rule) []*Finding {
+func (d *Detector) detectRule(s *state, r *Rule) []*Finding {
 	// Find all strings matching the rule's regular expression
 	var findings []*Finding
 
@@ -183,6 +186,39 @@ func detectRule(s *state, r *Rule) []*Finding {
 			}
 		}
 
+		// Check if the secret is enclosed
+		if d.enclosed {
+			// Trim characters that are likely not part of the secret
+			trimmedSecret := strings.TrimFunc(secret, isLikelyNoSecret)
+
+			// TODO: Factor out, check boundaries, ...
+			remainingLine := loc.Line(s.raw)
+			isEnclosed := false
+
+			for !isEnclosed && (len(remainingLine) > 0) {
+				idx := strings.Index(remainingLine, trimmedSecret)
+				if idx == -1 {
+					break
+				}
+
+				if (idx > 0) && !isLikelyNoSecret([]rune(remainingLine[idx-1:])[0]) {
+					remainingLine = remainingLine[idx+len(trimmedSecret):]
+					continue
+				}
+
+				if (idx+len(trimmedSecret) < len(remainingLine)) && !isLikelyNoSecret([]rune(remainingLine[idx+len(trimmedSecret):])[0]) {
+					remainingLine = remainingLine[idx+len(trimmedSecret):]
+					continue
+				}
+
+				isEnclosed = true
+			}
+
+			if !isEnclosed {
+				continue
+			}
+		}
+
 		// Append finding
 		findings = append(findings, &Finding{
 			ID:          r.RuleID,
@@ -194,4 +230,27 @@ func detectRule(s *state, r *Rule) []*Finding {
 	}
 
 	return findings
+}
+
+// isLikelyNoSecret return true if the rune most-likely does not belong to a secret.
+func isLikelyNoSecret(r rune) bool {
+	return unicode.In(
+		r,
+		unicode.Cc, // Cc is the set of Unicode characters in category Cc (Other, control).
+		unicode.Cf, // Cf is the set of Unicode characters in category Cf (Other, format).
+		unicode.Co, // Co is the set of Unicode characters in category Co (Other, private use).
+		unicode.Cs, // Cs is the set of Unicode characters in category Cs (Other, surrogate).
+		unicode.Mc, // Mc is the set of Unicode characters in category Mc (Mark, spacing combining).
+		unicode.Me, // Me is the set of Unicode characters in category Me (Mark, enclosing).
+		unicode.Mn, // Mn is the set of Unicode characters in category Mn (Mark, nonspacing).
+		unicode.Pc, // Pc is the set of Unicode characters in category Pc (Punctuation, connector).
+		unicode.Pe, // Pe is the set of Unicode characters in category Pe (Punctuation, close).
+		unicode.Pf, // Pf is the set of Unicode characters in category Pf (Punctuation, final quote).
+		unicode.Pi, // Pi is the set of Unicode characters in category Pi (Punctuation, initial quote).
+		unicode.Po, // Po is the set of Unicode characters in category Po (Punctuation, other).
+		unicode.Ps, // Ps is the set of Unicode characters in category Ps (Punctuation, open).
+		unicode.Zl, // Zl is the set of Unicode characters in category Zl (Separator, line).
+		unicode.Zp, // Zp is the set of Unicode characters in category Zp (Separator, paragraph).
+		unicode.Zs, // Zs is the set of Unicode characters in category Zs (Separator, space).
+	)
 }
