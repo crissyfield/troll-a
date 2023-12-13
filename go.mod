@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.24.0
 	github.com/aws/aws-sdk-go-v2/config v1.26.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.5
+	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/spf13/cobra v1.8.0
 	github.com/wasilibs/go-re2 v1.4.1

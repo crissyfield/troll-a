@@ -12,11 +12,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/cenkalti/backoff/v4"
 )
 
-const (
+var (
 	// DefaultTimeout is the default timeout for fetching the URL.
 	DefaultTimeout = 60 * time.Second
+
+	// DefaultBackOff is the default backoff strategy for fetching the URL.
+	DefaultBackOff = &backoff.StopBackOff{}
 )
 
 // URL with fetch address addr using the optional options.
@@ -24,6 +28,7 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 	// Bootstrap settings
 	settings := &settings{
 		timeout: DefaultTimeout,
+		backOff: DefaultBackOff,
 	}
 
 	for _, o := range opts {
@@ -36,53 +41,68 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("parse URL: %w", err)
 	}
 
-	// Pick proper code path
-	switch u.Scheme {
-	case "http", "https":
-		// HTTP/HTTPS
-		hc := &http.Client{Timeout: settings.timeout}
+	// Pick proper fetch strategy
+	var rc io.ReadCloser
 
-		res, err := hc.Get(u.String()) //nolint // res.Body will be closed by the decompression wrapper!
-		if err != nil {
-			return nil, fmt.Errorf("HTTP fetch [url=%s]: %w", u.String(), err)
-		}
+	err = backoff.Retry(
+		func() error {
+			switch u.Scheme {
+			case "http", "https":
+				// HTTP/HTTPS
+				hc := &http.Client{Timeout: settings.timeout}
 
-		r, err := NewWrappedDecompressionReader(res.Body)
-		if err != nil {
-			return nil, fmt.Errorf("decompression: %w", err)
-		}
+				res, err := hc.Get(u.String()) //nolint // res.Body will be closed by the decompression wrapper!
+				if err != nil {
+					return fmt.Errorf("HTTP fetch [url=%s]: %w", u.String(), err)
+				}
 
-		return r, nil
+				if res.StatusCode != http.StatusOK {
+					return fmt.Errorf("unexpected HTTP status: %d", res.StatusCode)
+				}
 
-	case "s3":
-		// Amazon S3
-		hc := &http.Client{Timeout: settings.timeout}
+				rc = res.Body
+				return nil
 
-		cfg, err := config.LoadDefaultConfig(context.Background(), config.WithHTTPClient(hc))
-		if err != nil {
-			return nil, fmt.Errorf("load default AWS config: %w", err)
-		}
+			case "s3":
+				// Amazon S3
+				hc := &http.Client{Timeout: settings.timeout}
 
-		s3c := s3.NewFromConfig(cfg)
+				cfg, err := config.LoadDefaultConfig(context.Background(), config.WithHTTPClient(hc))
+				if err != nil {
+					return backoff.Permanent(fmt.Errorf("load default AWS config: %w", err))
+				}
 
-		res, err := s3c.GetObject(context.Background(), &s3.GetObjectInput{
-			Bucket: aws.String(u.Host),
-			Key:    aws.String(strings.TrimPrefix(u.Path, "/")),
-		})
+				s3c := s3.NewFromConfig(cfg)
 
-		if err != nil {
-			return nil, fmt.Errorf("S3 fetch [url=%s]: %w", u.String(), err)
-		}
+				res, err := s3c.GetObject(context.Background(), &s3.GetObjectInput{
+					Bucket: aws.String(u.Host),
+					Key:    aws.String(strings.TrimPrefix(u.Path, "/")),
+				})
 
-		r, err := NewWrappedDecompressionReader(res.Body)
-		if err != nil {
-			return nil, fmt.Errorf("decompression: %w", err)
-		}
+				if err != nil {
+					return fmt.Errorf("S3 fetch [url=%s]: %w", u.String(), err)
+				}
 
-		return r, nil
+				rc = res.Body
+				return nil
 
-	default:
-		// Not supported
-		return nil, fmt.Errorf("schema '%s' not supported", u.Scheme)
+			default:
+				// Not supported
+				return backoff.Permanent(fmt.Errorf("schema '%s' not supported", u.Scheme))
+			}
+		},
+		settings.backOff,
+	)
+
+	if err != nil {
+		return nil, err
 	}
+
+	// Decompress, if necessary
+	dr, err := NewWrappedDecompressionReader(rc)
+	if err != nil {
+		return nil, fmt.Errorf("decompression: %w", err)
+	}
+
+	return dr, nil
 }
