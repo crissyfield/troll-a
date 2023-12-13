@@ -26,10 +26,11 @@ var (
 	Version = "(unknown)"
 
 	// Configuration
-	configVerbosity   = cli.InfoLogLevel
+	configLogLevel    = cli.LogLevel{Val: slog.LevelInfo}
 	configJSON        = false
 	configJobs        = uint(8)
-	configRulesPreset = cli.SecretRulesPreset
+	configBackoff     = cli.BackoffStrategy{Val: cli.BackoffStrategyValNone}
+	configRulesPreset = cli.RulesPreset{Val: preset.Secret}
 )
 
 // main is the main entry point of the command.
@@ -45,9 +46,10 @@ func main() {
 	}
 
 	// Settings
-	cmd.Flags().VarP(&configVerbosity, "verbosity", "V", `verbosity of logging output, allowed: "debug", "info", "warn", "error"`)
+	cmd.Flags().VarP(&configLogLevel, "verbosity", "V", `verbosity of logging output, allowed: "debug", "info", "warn", "error"`)
 	cmd.Flags().BoolVarP(&configJSON, "json", "s", false, `change output format to JSON`)
 	cmd.Flags().UintVarP(&configJobs, "jobs", "j", configJobs, `number of concurrent jobs to detect secrets`)
+	cmd.Flags().VarP(&configBackoff, "backoff", "b", `backoff strategy for fetching, allowed: "none", "constant", "exponential", "zero"`)
 	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use, allowed: "all", "most", "secret"`)
 
 	// Execute
@@ -60,37 +62,26 @@ func main() {
 // runCommand is called when the command is used.
 func runCommand(_ *cobra.Command, args []string) {
 	// Logging
-	var level slog.Level
-	_ = level.UnmarshalText([]byte(configVerbosity))
-
 	var slogErr, slogOut *slog.Logger
+
 	if configJSON {
-		slogErr = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+		slogErr = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: configLogLevel.Val}))
 		slogOut = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	} else {
-		slogErr = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+		slogErr = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: configLogLevel.Val}))
 		slogOut = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 
 	// Create detector on given rules preset
-	var detector *detect.Detector
-
-	switch configRulesPreset {
-	case cli.AllRulesPreset:
-		// All rules
-		detector = detect.NewDetector(preset.All)
-
-	case cli.MostRulesPreset:
-		// Most rules
-		detector = detect.NewDetector(preset.Most)
-
-	case cli.SecretRulesPreset:
-		// Secret rules
-		detector = detect.NewDetector(preset.Secret)
-	}
+	detector := detect.NewDetector(configRulesPreset.Val)
 
 	// Open reader for URL
-	r, err := fetch.URL(args[0], fetch.WithTimeout(4*time.Hour))
+	r, err := fetch.URL(
+		args[0],
+		fetch.WithTimeout(4*time.Hour),
+		fetch.WithBackoff(configBackoff.Val),
+	)
+
 	if err != nil {
 		slogErr.Error("Failed to fetch WARC file", slog.Any("error", err))
 		os.Exit(1) //nolint

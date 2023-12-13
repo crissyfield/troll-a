@@ -2,45 +2,53 @@ package cli
 
 import (
 	"errors"
+	"log/slog"
+	"strings"
 )
 
-// LogLevel wraps a log level CLI setting.
-type LogLevel string
-
-const (
-	// DebugLogLevel defines the "debug" log level CLI setting.
-	DebugLogLevel LogLevel = "debug"
-
-	// InfoLogLevel defines the "info" log level CLI setting.
-	InfoLogLevel LogLevel = "info"
-
-	// WarnLogLevel defines the "warn" log level CLI setting.
-	WarnLogLevel LogLevel = "warn"
-
-	// ErrorLogLevel defines the "error" log level CLI setting.
-	ErrorLogLevel LogLevel = "error"
-)
-
-// String returns the wrapped log level.
-func (ll *LogLevel) String() string {
-	return string(*ll)
+// LogLevel wraps a slog level..
+type LogLevel struct {
+	Val slog.Level
 }
 
-// Set sets the wrapped log level.
-func (ll *LogLevel) Set(s string) error {
-	switch LogLevel(s) {
-	case DebugLogLevel, InfoLogLevel, WarnLogLevel, ErrorLogLevel:
-		// Valid
-		*ll = LogLevel(s)
-		return nil
-
-	default:
-		// Invalid
-		return errors.New(`must be one of "debug", "info", "warn", or "error"`)
+// String returns the wrapped slog level.
+func (ll LogLevel) String() string {
+	switch ll.Val {
+	case slog.LevelDebug:
+		return "debug"
+	case slog.LevelInfo:
+		return "info"
+	case slog.LevelWarn:
+		return "warn"
+	case slog.LevelError:
+		return "error"
 	}
+
+	return ""
 }
 
-// Type returns the name of of this CLI setting.
+// Set sets the wrapped slog level.
+func (ll *LogLevel) Set(s string) error {
+	switch strings.ToLower(s) {
+	case "debug":
+		ll.Val = slog.LevelDebug
+		return nil
+	case "info":
+		ll.Val = slog.LevelInfo
+		return nil
+	case "warn":
+		ll.Val = slog.LevelWarn
+		return nil
+	case "error":
+		ll.Val = slog.LevelError
+		return nil
+	}
+
+	// Invalid
+	return errors.New(`must be one of "debug", "info", "warn", or "error"`)
+}
+
+// Type returns the name of the slog level type.
 func (*LogLevel) Type() string {
 	return "LogLevel"
 }
