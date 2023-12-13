@@ -19,3 +19,8 @@ func CompileRegexp(expr string) (AbstractRegexp, error) {
 func MustCompileRegexp(expr string) AbstractRegexp {
 	return regexp.MustCompile(expr)
 }
+
+// DuplicateRegexp "duplicates" the given regular expressio re, by simply returning it.
+func DuplicateRegexp(re *regexp.Regexp) AbstractRegexp {
+	return re
+}

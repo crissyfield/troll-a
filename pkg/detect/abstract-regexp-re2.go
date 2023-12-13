@@ -3,6 +3,8 @@
 package detect
 
 import (
+	"regexp"
+
 	"github.com/wasilibs/go-re2"
 )
 
@@ -18,4 +20,9 @@ func CompileRegexp(expr string) (AbstractRegexp, error) {
 // initialization of global variables holding compiled abstract regular expressions.
 func MustCompileRegexp(expr string) AbstractRegexp {
 	return re2.MustCompile(expr)
+}
+
+// DuplicateRegexp "duplicates" the given regular expression by recompiling it as go-re2 regular expression.
+func DuplicateRegexp(re *regexp.Regexp) AbstractRegexp {
+	return re2.MustCompile(re.String())
 }

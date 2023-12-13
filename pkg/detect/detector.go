@@ -14,19 +14,28 @@ type RuleFunction func() *config.Rule
 
 // Detector wraps a set of rules to detect secrets.
 type Detector struct {
-	rules         []*config.Rule
+	rules         []*Rule
 	combinedRegep AbstractRegexp
 }
 
 // NewDetector creates a new Detector object with rules from the given set of rule functions.
 func NewDetector(ruleFns []RuleFunction) *Detector {
 	// Create rules and extract raw expressions
-	rules := make([]*config.Rule, len(ruleFns))
+	rules := make([]*Rule, len(ruleFns))
 	exprs := make([]string, len(rules))
 
 	for i, fn := range ruleFns {
 		r := fn()
-		rules[i] = r
+
+		rules[i] = &Rule{
+			Description: r.Description,
+			RuleID:      r.RuleID,
+			Entropy:     r.Entropy,
+			SecretGroup: r.SecretGroup,
+			Regex:       DuplicateRegexp(r.Regex),
+			Allowlist:   r.Allowlist,
+		}
+
 		exprs[i] = r.Regex.String()
 	}
 
@@ -86,7 +95,7 @@ func (d *Detector) Detect(r io.Reader) ([]*Finding, error) {
 }
 
 // detectRule will detect a single rule.
-func detectRule(s *state, r *config.Rule) []*Finding {
+func detectRule(s *state, r *Rule) []*Finding {
 	// Find all strings matching the rule's regular expression
 	var findings []*Finding
 
