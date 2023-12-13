@@ -15,7 +15,7 @@ type RuleFunction func() *config.Rule
 // Detector wraps a set of rules to detect secrets.
 type Detector struct {
 	rules         []*config.Rule
-	combinedRegep CombinedRegexp
+	combinedRegep AbstractRegexp
 }
 
 // NewDetector creates a new Detector object with rules from the given set of rule functions.
@@ -33,7 +33,7 @@ func NewDetector(ruleFns []RuleFunction) *Detector {
 	// Return detector
 	return &Detector{
 		rules:         rules,
-		combinedRegep: MustCompileCombinedRegexp(exprs),
+		combinedRegep: MustCompileRegexp(strings.Join(exprs, "|")),
 	}
 }
 
