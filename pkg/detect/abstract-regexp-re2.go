@@ -22,7 +22,7 @@ func MustCompileRegexp(expr string) AbstractRegexp {
 	return re2.MustCompile(expr)
 }
 
-// DuplicateRegexp "duplicates" the given regular expression by recompiling it as go-re2 regular expression.
-func DuplicateRegexp(re *regexp.Regexp) AbstractRegexp {
+// CloneRegexp clones the given regular expression re.
+func CloneRegexp(re *regexp.Regexp) AbstractRegexp {
 	return re2.MustCompile(re.String())
 }

@@ -20,7 +20,7 @@ func MustCompileRegexp(expr string) AbstractRegexp {
 	return regexp.MustCompile(expr)
 }
 
-// DuplicateRegexp "duplicates" the given regular expressio re, by simply returning it.
-func DuplicateRegexp(re *regexp.Regexp) AbstractRegexp {
+// CloneRegexp clones the given regular expression re.
+func CloneRegexp(re *regexp.Regexp) AbstractRegexp {
 	return re
 }

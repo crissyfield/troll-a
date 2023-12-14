@@ -26,7 +26,7 @@ func NewRuleFromGitleaksRule(r *config.Rule) *Rule {
 		Description: r.Description,
 		Entropy:     r.Entropy,
 		SecretGroup: r.SecretGroup,
-		Regex:       DuplicateRegexp(r.Regex),
+		Regex:       CloneRegexp(r.Regex),
 		Allowlist:   r.Allowlist,
 	}
 }

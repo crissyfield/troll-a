@@ -23,16 +23,16 @@ var (
 	DefaultBackOff = &backoff.StopBackOff{}
 )
 
-// URL with fetch address addr using the optional options.
-func URL(addr string, opts ...Option) (io.ReadCloser, error) {
-	// Bootstrap settings
-	settings := &settings{
+// URL will fetch address addr using the optional options.
+func URL(addr string, opts ...func(*state)) (io.ReadCloser, error) {
+	// Bootstrap state
+	state := &state{
 		timeout: DefaultTimeout,
 		backOff: DefaultBackOff,
 	}
 
 	for _, o := range opts {
-		o(settings)
+		o(state)
 	}
 
 	// Parse URL
@@ -49,7 +49,7 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 			switch u.Scheme {
 			case "http", "https":
 				// HTTP/HTTPS
-				hc := &http.Client{Timeout: settings.timeout}
+				hc := &http.Client{Timeout: state.timeout}
 
 				res, err := hc.Get(u.String()) //nolint // res.Body will be closed by the decompression wrapper!
 				if err != nil {
@@ -65,7 +65,7 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 
 			case "s3":
 				// Amazon S3
-				hc := &http.Client{Timeout: settings.timeout}
+				hc := &http.Client{Timeout: state.timeout}
 
 				cfg, err := config.LoadDefaultConfig(context.Background(), config.WithHTTPClient(hc))
 				if err != nil {
@@ -91,7 +91,7 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 				return backoff.Permanent(fmt.Errorf("schema not supported"))
 			}
 		},
-		settings.backOff,
+		state.backOff,
 	)
 
 	if err != nil {

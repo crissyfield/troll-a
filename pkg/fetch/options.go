@@ -6,25 +6,22 @@ import (
 	"github.com/cenkalti/backoff/v4"
 )
 
-// settings wraps all fetching settings.
-type settings struct {
+// state wraps all fetching state.
+type state struct {
 	timeout time.Duration
 	backOff backoff.BackOff
 }
 
-// Option is a function mutating the settings.
-type Option func(*settings)
-
 // WithTimeout will set the timeout duration for the fetch operation.
-func WithTimeout(timeout time.Duration) func(*settings) {
-	return func(s *settings) {
+func WithTimeout(timeout time.Duration) func(*state) {
+	return func(s *state) {
 		s.timeout = timeout
 	}
 }
 
 // WithBackoff will set the backoff strategy for the fetch operation.
-func WithBackoff(backOff backoff.BackOff) func(*settings) {
-	return func(s *settings) {
+func WithBackoff(backOff backoff.BackOff) func(*state) {
+	return func(s *state) {
 		s.backOff = backOff
 	}
 }

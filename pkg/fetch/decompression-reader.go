@@ -14,7 +14,7 @@ type decompressionReader struct {
 	w io.ReadCloser // Wrapped reader-closer
 }
 
-// NewWrappedDecompressionReader will return a new reader transparently doing decompression of GZIP or BZIP2.
+// NewWrappedDecompressionReader will return a new reader transparently doing decompression of GZip or BZip2.
 func NewWrappedDecompressionReader(r io.ReadCloser) (io.ReadCloser, error) {
 	// Read magic bytes
 	br := bufio.NewReader(r)

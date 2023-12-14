@@ -10,17 +10,6 @@ import (
 )
 
 const (
-	// bufferSize defines the size of the read buffer.
-	bufferSize = 4 * 1024 * 1024
-
-	// Headers
-	contentLengthHeader             = "content-length"
-	warcTypeHeader                  = "warc-type"
-	warcIdentifiedPayloadTypeHeader = "warc-identified-payload-type"
-	warchTargetURIHeader            = "warc-target-uri"
-)
-
-const (
 	// RecordTypeRequest is used for requests.
 	RecordTypeRequest = "request"
 
@@ -36,6 +25,17 @@ var (
 	ErrBreakTraversal = errors.New("stop traversal")
 )
 
+const (
+	// bufferSize defines the size of the read buffer.
+	bufferSize = 4 * 1024 * 1024
+
+	// Headers
+	contentLengthHeader             = "content-length"
+	warcTypeHeader                  = "warc-type"
+	warcIdentifiedPayloadTypeHeader = "warc-identified-payload-type"
+	warchTargetURIHeader            = "warc-target-uri"
+)
+
 // Record contains all information about a record.
 type Record struct {
 	Type                  string    // Type of record ("request", "response", or "metadata")
@@ -44,11 +44,8 @@ type Record struct {
 	Content               io.Reader // Reader for the content
 }
 
-// RecordCallback is called for each record during traversal.
-type RecordCallback func(r *Record) error
-
 // Traverse will traverse the stream via r, calling fn for each record.
-func Traverse(r io.Reader, fn RecordCallback) error {
+func Traverse(r io.Reader, fn func(r *Record) error) error {
 	// Buffered IO
 	br := bufio.NewReaderSize(r, bufferSize)
 
