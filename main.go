@@ -38,7 +38,16 @@ var (
 func main() {
 	// Define command
 	var cmd = &cobra.Command{
-		Use:               "troll-a [flags] url",
+		Use: `troll-a [flags] url
+
+This tool allows to extract (potentially) secret or sensitive information from WARC (Web ARChive)
+files. Extracted information is output as structured text or JSON, which simplifies further
+processing of the data.
+
+"url" can be either a regular HTTP or HTTPS reference ("https://domain/path") or an Amazon S3
+reference ("s3://bucket/path"). Local files are not yet supported.
+
+This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect secrets.`,
 		Short:             "Drill into WARC web archives",
 		Args:              cobra.ExactArgs(1),
 		Version:           Version,
