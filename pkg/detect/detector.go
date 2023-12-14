@@ -29,15 +29,7 @@ func NewDetector(ruleFns []RuleFunction, enclosed bool) *Detector {
 	for i, fn := range ruleFns {
 		r := fn()
 
-		rules[i] = &Rule{
-			Description: r.Description,
-			RuleID:      r.RuleID,
-			Entropy:     r.Entropy,
-			SecretGroup: r.SecretGroup,
-			Regex:       DuplicateRegexp(r.Regex),
-			Allowlist:   r.Allowlist,
-		}
-
+		rules[i] = NewRuleFromGitleaksRule(r)
 		exprs[i] = r.Regex.String()
 	}
 
