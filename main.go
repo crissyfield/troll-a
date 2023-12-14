@@ -29,7 +29,7 @@ var (
 	configQuiet       = false
 	configJSON        = false
 	configJobs        = uint(8)
-	configBackoff     = cli.BackoffStrategy{Val: cli.BackoffStrategyValNone}
+	configRetry       = cli.RetryStrategy{Val: cli.RetryStrategyValNever}
 	configRulesPreset = cli.RulesPreset{Val: preset.Secret}
 	configEnclosed    = false
 )
@@ -50,7 +50,7 @@ func main() {
 	cmd.Flags().BoolVarP(&configQuiet, "quiet", "q", configQuiet, `suppress success message`)
 	cmd.Flags().BoolVarP(&configJSON, "json", "s", configJSON, `change output format to JSON`)
 	cmd.Flags().UintVarP(&configJobs, "jobs", "j", configJobs, `number of concurrent jobs to detect secrets`)
-	cmd.Flags().VarP(&configBackoff, "backoff", "b", `backoff strategy for fetching, allowed: "none", "constant", "exponential", "zero"`)
+	cmd.Flags().VarP(&configRetry, "retry", "r", `retry strategy for fetching, allowed: "never", "constant", "exponential", "always"`)
 	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use, allowed: "all", "most", "secret"`)
 	cmd.Flags().BoolVarP(&configEnclosed, "enclosed", "e", configEnclosed, `only report secrets that are enclosed`)
 
@@ -70,7 +70,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	r, err := fetch.URL(
 		args[0],
 		fetch.WithTimeout(4*time.Hour),
-		fetch.WithBackoff(configBackoff.Val),
+		fetch.WithBackoff(configRetry.Val),
 	)
 
 	if err != nil {
