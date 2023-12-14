@@ -88,7 +88,7 @@ func URL(addr string, opts ...Option) (io.ReadCloser, error) {
 
 			default:
 				// Not supported
-				return backoff.Permanent(fmt.Errorf("schema '%s' not supported", u.Scheme))
+				return backoff.Permanent(fmt.Errorf("schema not supported"))
 			}
 		},
 		settings.backOff,

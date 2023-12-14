@@ -3,9 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"time"
 
@@ -26,7 +26,7 @@ var (
 	Version = "(unknown)"
 
 	// Configuration
-	configLogLevel    = cli.LogLevel{Val: slog.LevelInfo}
+	configQuiet       = false
 	configJSON        = false
 	configJobs        = uint(8)
 	configBackoff     = cli.BackoffStrategy{Val: cli.BackoffStrategyValNone}
@@ -47,7 +47,7 @@ func main() {
 	}
 
 	// Settings
-	cmd.Flags().VarP(&configLogLevel, "verbosity", "V", `verbosity of logging output, allowed: "debug", "info", "warn", "error"`)
+	cmd.Flags().BoolVarP(&configQuiet, "quiet", "q", configQuiet, `suppress success message`)
 	cmd.Flags().BoolVarP(&configJSON, "json", "s", configJSON, `change output format to JSON`)
 	cmd.Flags().UintVarP(&configJobs, "jobs", "j", configJobs, `number of concurrent jobs to detect secrets`)
 	cmd.Flags().VarP(&configBackoff, "backoff", "b", `backoff strategy for fetching, allowed: "none", "constant", "exponential", "zero"`)
@@ -63,17 +63,6 @@ func main() {
 
 // runCommand is called when the command is used.
 func runCommand(_ *cobra.Command, args []string) {
-	// Logging
-	var slogErr, slogOut *slog.Logger
-
-	if configJSON {
-		slogErr = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: configLogLevel.Val}))
-		slogOut = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	} else {
-		slogErr = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: configLogLevel.Val}))
-		slogOut = slog.New(slog.NewTextHandler(os.Stdout, nil))
-	}
-
 	// Create detector on given rules preset
 	detector := detect.NewDetector(configRulesPreset.Val, configEnclosed)
 
@@ -85,7 +74,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	)
 
 	if err != nil {
-		slogErr.Error("Failed to fetch WARC file", slog.Any("error", err))
+		cli.Error(`Error: Failed to fetch WARC file ["%s"]`, err)
 		os.Exit(1) //nolint
 	}
 
@@ -113,15 +102,27 @@ func runCommand(_ *cobra.Command, args []string) {
 
 				// Print findings
 				for _, f := range findings {
-					slogOut.Info(
-						"Matched",
-						slog.String("uri", buf.TargetURI),
-						slog.Int("line", f.Location.StartLine),
-						slog.Int("column", f.Location.StartColumn),
-						slog.String("rule", f.ID),
-						slog.String("secret", f.Secret),
-						slog.String("full", f.Location.Line(string(buf.Content))),
-					)
+					if configJSON {
+						// JSON
+						_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
+							"secret":  f.Secret,
+							"rule":    f.ID,
+							"uri":     buf.TargetURI,
+							"line":    f.Location.StartLine,
+							"column":  f.Location.StartColumn,
+							"context": f.Location.Line(string(buf.Content)),
+						})
+					} else {
+						// Terminal
+						cli.Info(
+							`Detected: secret="%s" rule="%s" uri="%s" line=%d column=%d`,
+							f.Secret,
+							f.ID,
+							buf.TargetURI,
+							f.Location.StartLine,
+							f.Location.StartColumn,
+						)
+					}
 				}
 			}
 
@@ -159,7 +160,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	})
 
 	if err != nil {
-		slogErr.Error("Failed to process WARC file", slog.Any("error", err))
+		cli.Error(`Error: Failed to process WARC file ["%s"]`, err)
 		os.Exit(1) //nolint
 	}
 
@@ -168,9 +169,9 @@ func runCommand(_ *cobra.Command, args []string) {
 
 	err = eg.Wait()
 	if err != nil {
-		slogErr.Error("Failed to detect secrets", slog.Any("error", err))
+		cli.Error(`Error: Failed to detect secrets ["%s"]`, err)
 		os.Exit(1) //nolint
 	}
 
-	slogErr.Info("Done", slog.String("url", args[0]))
+	cli.Info("Success: Processed %s", args[0])
 }

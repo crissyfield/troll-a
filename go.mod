@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.26.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.5
 	github.com/cenkalti/backoff/v4 v4.2.1
+	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/spf13/cobra v1.8.0
 	github.com/wasilibs/go-re2 v1.4.1
@@ -32,7 +33,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.5 // indirect
 	github.com/aws/smithy-go v1.19.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/charmbracelet/lipgloss v0.9.1 // indirect
 	github.com/fatih/semgroup v1.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gitleaks/go-gitdiff v0.9.0 // indirect
