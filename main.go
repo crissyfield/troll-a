@@ -48,11 +48,30 @@ func main() {
 
 	// Settings
 	cmd.Flags().BoolVarP(&configQuiet, "quiet", "q", configQuiet, `suppress success message`)
-	cmd.Flags().BoolVarP(&configJSON, "json", "s", configJSON, `change output format to JSON`)
+	cmd.Flags().BoolVarP(&configJSON, "json", "s", configJSON, `change output format of detected secrets to JSON`)
 	cmd.Flags().UintVarP(&configJobs, "jobs", "j", configJobs, `number of concurrent jobs to detect secrets`)
-	cmd.Flags().VarP(&configRetry, "retry", "r", `retry strategy for fetching, allowed: "never", "constant", "exponential", "always"`)
-	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use, allowed: "all", "most", "secret"`)
-	cmd.Flags().BoolVarP(&configEnclosed, "enclosed", "e", configEnclosed, `only report secrets that are enclosed`)
+	cmd.Flags().BoolVarP(&configEnclosed, "enclosed", "e", configEnclosed, `only report secrets that are clearly enclosed by their context`)
+
+	cmd.Flags().VarP(&configRetry, "retry", "r", `retry strategy to use. This could be one of the following:
+never:       This strategy will fail after the first fetch failure
+             and will not attempt to retry.
+constant:    This strategy will attempt to retry up to 5 times,
+             with a 5 second delay after each attempt.
+exponential: This strategy will attempt to retry for 15 minutes,
+             with an exponentially increasing delay after each
+             attempt.
+always:      This strategy will attempt to retry forever, with no
+             delay at all after each attempt.
+No other values are allowed.`)
+
+	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use. This could be one of the following:
+all:         All known rules will be applied, which can result in
+             a significant amount of noise for large data sets.
+most:        Most of the rules are applied, skipping the biggest
+             culprits for false positives.
+secret:      Only those rules are applied that are most likely to
+             result in an actual leak of a secret.
+No other values are allowed.`)
 
 	// Execute
 	if err := cmd.Execute(); err != nil {
