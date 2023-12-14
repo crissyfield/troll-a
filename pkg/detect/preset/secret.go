@@ -7,7 +7,7 @@ import (
 )
 
 // Secret is a list of secrets, access and refresh token detection rules.
-var Secret = []detect.RuleFunction{
+var Secret = []detect.GitleaksRuleFunction{
 	rules.AdobeClientSecret,              // Adobe Client Secret
 	rules.AgeSecretKey,                   // Age secret key
 	rules.AlibabaSecretKey,               // Alibaba Secret Key

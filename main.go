@@ -106,7 +106,7 @@ func runCommand(_ *cobra.Command, args []string) {
 						// JSON
 						_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
 							"secret":  f.Secret,
-							"rule":    f.ID,
+							"rule":    f.RuleID,
 							"uri":     buf.TargetURI,
 							"line":    f.Location.StartLine,
 							"column":  f.Location.StartColumn,
@@ -117,7 +117,7 @@ func runCommand(_ *cobra.Command, args []string) {
 						cli.Info(
 							`Detected: secret="%s" rule="%s" uri="%s" line=%d column=%d`,
 							f.Secret,
-							f.ID,
+							f.RuleID,
 							buf.TargetURI,
 							f.Location.StartLine,
 							f.Location.StartColumn,

@@ -7,7 +7,7 @@ import (
 )
 
 // Most is a list of most detection rules.
-var Most = []detect.RuleFunction{
+var Most = []detect.GitleaksRuleFunction{
 	rules.AWS,                             // AWS
 	rules.AdafruitAPIKey,                  // Adafruit API Key
 	rules.AdobeClientID,                   // Adobe Client ID (OAuth Web)

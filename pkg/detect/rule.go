@@ -6,6 +6,9 @@ import (
 	"github.com/zricethezav/gitleaks/v8/config"
 )
 
+// GitleaksRuleFunction is a function that generates a rule.
+type GitleaksRuleFunction func() *config.Rule
+
 // Rule contains information that define details on how to detect secrets.
 type Rule struct {
 	RuleID      string           // Unique identifier for this rule

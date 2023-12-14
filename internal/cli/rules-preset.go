@@ -10,7 +10,7 @@ import (
 
 // RulesPreset wraps a rules preset.
 type RulesPreset struct {
-	Val []detect.RuleFunction
+	Val []detect.GitleaksRuleFunction
 }
 
 // String returns the wrapped rules preset.

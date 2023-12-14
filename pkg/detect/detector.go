@@ -6,12 +6,7 @@ import (
 	"io"
 	"strings"
 	"unicode"
-
-	"github.com/zricethezav/gitleaks/v8/config"
 )
-
-// RuleFunction is a function that generates a rule.
-type RuleFunction func() *config.Rule
 
 // Detector wraps a set of rules to detect secrets.
 type Detector struct {
@@ -21,7 +16,7 @@ type Detector struct {
 }
 
 // NewDetector creates a new Detector object with rules from the given set of rule functions.
-func NewDetector(ruleFns []RuleFunction, enclosed bool) *Detector {
+func NewDetector(ruleFns []GitleaksRuleFunction, enclosed bool) *Detector {
 	// Create rules and extract raw expressions
 	rules := make([]*Rule, len(ruleFns))
 	exprs := make([]string, len(rules))
@@ -39,15 +34,6 @@ func NewDetector(ruleFns []RuleFunction, enclosed bool) *Detector {
 		combinedRegep: MustCompileRegexp(strings.Join(exprs, "|")),
 		enclosed:      enclosed,
 	}
-}
-
-// Finding wraps all relevant information for a finding.
-type Finding struct {
-	ID          string    // ID of the rule responsible for the finding.
-	Description string    // Description of the secret found.
-	Secret      string    // The actual secret.
-	Match       string    // The match containing the secret.
-	Location    *Location // The location of the match.
 }
 
 // state wraps some internal state for the detection.
@@ -180,40 +166,15 @@ func (d *Detector) detectRule(s *state, r *Rule) []*Finding {
 
 		// Check if the secret is enclosed
 		if d.enclosed {
-			// Trim characters that are likely not part of the secret
-			trimmedSecret := strings.TrimFunc(secret, isLikelyNoSecret)
-
-			// TODO: Factor out, check boundaries, ...
-			remainingLine := loc.Line(s.raw)
-			isEnclosed := false
-
-			for !isEnclosed && (len(remainingLine) > 0) {
-				idx := strings.Index(remainingLine, trimmedSecret)
-				if idx == -1 {
-					break
-				}
-
-				if (idx > 0) && !isLikelyNoSecret([]rune(remainingLine[idx-1:])[0]) {
-					remainingLine = remainingLine[idx+len(trimmedSecret):]
-					continue
-				}
-
-				if (idx+len(trimmedSecret) < len(remainingLine)) && !isLikelyNoSecret([]rune(remainingLine[idx+len(trimmedSecret):])[0]) {
-					remainingLine = remainingLine[idx+len(trimmedSecret):]
-					continue
-				}
-
-				isEnclosed = true
-			}
-
-			if !isEnclosed {
+			// Check if secret is enclosed in line context
+			if checkIfEnclosed(loc.Line(s.raw), secret) {
 				continue
 			}
 		}
 
 		// Append finding
 		findings = append(findings, &Finding{
-			ID:          r.RuleID,
+			RuleID:      r.RuleID,
 			Description: r.Description,
 			Secret:      secret,
 			Match:       match,
@@ -224,8 +185,43 @@ func (d *Detector) detectRule(s *state, r *Rule) []*Finding {
 	return findings
 }
 
-// isLikelyNoSecret return true if the rune most-likely does not belong to a secret.
-func isLikelyNoSecret(r rune) bool {
+// Check if secret is enclosed in context.
+func checkIfEnclosed(context string, secret string) bool {
+	// Trim characters that are likely not part of the secret
+	trimmedSecret := strings.TrimFunc(secret, isEnclosureDelimiter)
+
+	for len(context) > 0 {
+		// Bail if secret does not exist in context
+		idx := strings.Index(context, trimmedSecret)
+		if idx == -1 {
+			break
+		}
+
+		// Check character right before match
+		prefixRunes := []rune(context[:idx])
+
+		if (len(prefixRunes) > 0) && !isEnclosureDelimiter(prefixRunes[len(prefixRunes)-1]) {
+			context = context[idx+len(trimmedSecret):]
+			continue
+		}
+
+		// Check character right after match
+		suffixRunes := []rune(context[idx+len(trimmedSecret):])
+
+		if (len(suffixRunes) > 0) && !isEnclosureDelimiter(suffixRunes[0]) {
+			context = context[idx+len(trimmedSecret):]
+			continue
+		}
+
+		// Secret is enclosed
+		return true
+	}
+
+	return false
+}
+
+// isEnclosureDelimiter return true if the rune r is an enclosure delimiter.
+func isEnclosureDelimiter(r rune) bool {
 	return unicode.In(
 		r,
 		unicode.Cc, // Cc is the set of Unicode characters in category Cc (Other, control).

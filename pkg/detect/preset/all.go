@@ -7,7 +7,7 @@ import (
 )
 
 // All is a list of all detection rules.
-var All = []detect.RuleFunction{
+var All = []detect.GitleaksRuleFunction{
 	rules.AWS,                             // AWS
 	rules.AdafruitAPIKey,                  // Adafruit API Key
 	rules.AdobeClientID,                   // Adobe Client ID (OAuth Web)
