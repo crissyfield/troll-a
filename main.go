@@ -159,6 +159,8 @@ func runCommand(_ *cobra.Command, args []string) {
 	}
 
 	// Traverse WARC file
+	var recordCount int64
+
 	err = warc.Traverse(r, func(r *warc.Record) error {
 		select {
 		case <-ctx.Done():
@@ -182,6 +184,8 @@ func runCommand(_ *cobra.Command, args []string) {
 				TargetURI: r.TargetURI,
 				Content:   content,
 			}
+
+			recordCount++
 		}
 
 		return nil
@@ -201,5 +205,5 @@ func runCommand(_ *cobra.Command, args []string) {
 		os.Exit(1) //nolint
 	}
 
-	cli.Info("Success: Processed %s", args[0])
+	cli.Info("Success: Processed %s (%d records)", args[0], recordCount)
 }
