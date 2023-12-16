@@ -205,5 +205,8 @@ func runCommand(_ *cobra.Command, args []string) {
 		os.Exit(1) //nolint
 	}
 
-	cli.Info("Success: Processed %s (%d records)", args[0], recordCount)
+	// Dump success message
+	if !configQuiet {
+		cli.Success("Success: Processed %s (%d records)", args[0], recordCount)
+	}
 }
