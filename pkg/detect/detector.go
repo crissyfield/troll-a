@@ -167,7 +167,7 @@ func (d *Detector) detectRule(s *state, r *Rule) []*Finding {
 		// Check if the secret is enclosed
 		if d.enclosed {
 			// Check if secret is enclosed in line context
-			if checkIfEnclosed(loc.Line(s.raw), secret) {
+			if !checkIfEnclosed(loc.Line(s.raw), secret) {
 				continue
 			}
 		}
