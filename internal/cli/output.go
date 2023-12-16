@@ -23,9 +23,9 @@ func Info(format string, a ...any) {
 	fmt.Fprintln(os.Stdout, InfoStyle.Render(fmt.Sprintf(format, a...)))
 }
 
-// Success outputs a success message to STDOUT.
+// Success outputs a success message to STDERR.
 func Success(format string, a ...any) {
-	fmt.Fprintln(os.Stdout, SuccessStyle.Render(fmt.Sprintf(format, a...)))
+	fmt.Fprintln(os.Stderr, SuccessStyle.Render(fmt.Sprintf(format, a...)))
 }
 
 // Error outputs an error message to STDERR.
