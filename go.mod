@@ -9,6 +9,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/gabriel-vasile/mimetype v1.4.3
+	github.com/klauspost/compress v1.17.4
 	github.com/spf13/cobra v1.8.0
 	github.com/wasilibs/go-re2 v1.4.1
 	github.com/zricethezav/gitleaks/v8 v8.18.1

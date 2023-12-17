@@ -95,7 +95,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	detector := detect.NewDetector(configRulesPreset.Val, configEnclosed)
 
 	// Open reader for URL
-	r, err := fetch.URL(
+	fr, err := fetch.Open(
 		args[0],
 		fetch.WithTimeout(4*time.Hour),
 		fetch.WithBackoff(configRetry.Val),
@@ -106,7 +106,16 @@ func runCommand(_ *cobra.Command, args []string) {
 		os.Exit(1) //nolint
 	}
 
-	defer r.Close()
+	defer fr.Close()
+
+	// Decompress, if necessary
+	dr, err := fetch.NewDecompressionReader(fr)
+	if err != nil {
+		cli.Error(`Error: Failed to decompress WARC file ["%s"]`, err)
+		os.Exit(1) //nolint
+	}
+
+	defer dr.Close()
 
 	// Create buffer channel
 	type buffer struct {
@@ -161,7 +170,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	// Traverse WARC file
 	var recordCount int64
 
-	err = warc.Traverse(r, func(r *warc.Record) error {
+	err = warc.Traverse(dr, func(r *warc.Record) error {
 		select {
 		case <-ctx.Done():
 			// Break traversal if jobs have stopped
