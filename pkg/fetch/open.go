@@ -52,12 +52,19 @@ func Open(addr string, opts ...Option) (io.ReadCloser, error) {
 		func() error {
 			switch u.Scheme {
 			case "http", "https":
+				// HTTP/HTTPS
 				return openHTTPURL(u, params, &rc)
+
 			case "s3":
+				// Amazon S3
 				return openS3URL(u, params, &rc)
+
 			case "file", "":
+				// File URL
 				return openFileURL(u, params, &rc)
+
 			default:
+				// Unknown schema
 				return backoff.Permanent(fmt.Errorf("schema not supported"))
 			}
 		},
