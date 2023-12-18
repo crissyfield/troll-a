@@ -178,7 +178,7 @@ func runCommand(_ *cobra.Command, args []string) {
 
 		default:
 			// Bail if wrong type or payload
-			if (r.Type != warc.RecordTypeResponse) || !mime.IsText(r.IdentifiedPayloadType) {
+			if (r.Type != warc.RecordTypeResponse) || (!mime.IsText(r.IdentifiedPayloadType) && !mime.IsText(r.HTTPContentType)) {
 				return nil
 			}
 
