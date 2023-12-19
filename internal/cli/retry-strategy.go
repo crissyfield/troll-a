@@ -69,5 +69,5 @@ func (bo *RetryStrategy) Set(s string) error {
 
 // Type returns the name of the backoff retry type.
 func (*RetryStrategy) Type() string {
-	return "RetryStrategy"
+	return "retry-strategy"
 }

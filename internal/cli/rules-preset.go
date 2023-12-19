@@ -48,5 +48,5 @@ func (rp *RulesPreset) Set(s string) error {
 
 // Type returns the name of the rules preset type.
 func (*RulesPreset) Type() string {
-	return "RulesPreset"
+	return "rules-preset"
 }
