@@ -8,6 +8,11 @@ import (
 	"github.com/wasilibs/go-re2"
 )
 
+const (
+	// AbstractRegexpEngine describes the name of the used regular expression engine.
+	AbstractRegexpEngine = "re2"
+)
+
 // Ensure interface integrity.
 var _ AbstractRegexp = (*re2.Regexp)(nil)
 

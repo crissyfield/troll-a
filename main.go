@@ -46,8 +46,8 @@ files. Extracted information is output as structured text or JSON, which simplif
 processing of the data.
 
 "url" can be either a regular HTTP or HTTPS reference ("https://domain/path"), an Amazon S3
-reference ("s3://bucket/path"), or a file path (either "file:///path" or "path"). If the asset is
-compressed with either GZip, BZip2, or ZStd it is automatically decompressed. ZStd with a
+reference ("s3://bucket/path"), or a file path (either "file:///path" or simply "path"). If the
+data is compressed with either GZip, BZip2, or ZStd it is automatically decompressed. ZStd with a
 prepended custom dictionary (as used by "*.megawarc.warc.zstd") is also handled transparently.
 
 This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect secrets.`,
@@ -85,6 +85,9 @@ exponential: This strategy will attempt to retry for 15 minutes,
 always:      This strategy will attempt to retry forever, with no
              delay at all after each attempt.
 No other values are allowed.`)
+
+	// Version should include regular expression engine
+	cmd.SetVersionTemplate(`{{printf "%s version %s" .Name .Version}}-` + detect.AbstractRegexpEngine)
 
 	// Execute
 	if err := cmd.Execute(); err != nil {

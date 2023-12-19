@@ -6,6 +6,11 @@ import (
 	"regexp"
 )
 
+const (
+	// AbstractRegexpEngine describes the name of the used regular expression engine.
+	AbstractRegexpEngine = "std"
+)
+
 // Ensure interface integrity.
 var _ AbstractRegexp = (*regexp.Regexp)(nil)
 
