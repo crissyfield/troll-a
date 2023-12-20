@@ -59,7 +59,7 @@ build-dist-linux-armv7:
 	@shasum -a 256 "dist/${NAME}-Linux-armv7l" >> "dist/${NAME}-sha256sum.txt"
 
 .PHONY: build-dist-darwin
-build-dist-darwin: build-dist-darwin-amd64 build-dist-darwin-arm6
+build-dist-darwin: build-dist-darwin-amd64 build-dist-darwin-arm64
 
 .PHONY: build-dist-darwin-amd64
 build-dist-darwin-amd64:
