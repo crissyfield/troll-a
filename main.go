@@ -41,14 +41,15 @@ func main() {
 	var cmd = &cobra.Command{
 		Use: `troll-a [flags] url
 
-This tool allows to extract (potentially) secret or sensitive information from WARC (Web ARChive)
-files. Extracted information is output as structured text or JSON, which simplifies further
-processing of the data.
+This tool allows to extract (potential) secrets such as passwords, API keys, and tokens
+from WARC (Web ARChive) files. Extracted information is output as structured text org
+JSON, which simplifies further processing of the data.
 
-"url" can be either a regular HTTP or HTTPS reference ("https://domain/path"), an Amazon S3
-reference ("s3://bucket/path"), or a file path (either "file:///path" or simply "path"). If the
-data is compressed with either GZip, BZip2, or ZStd it is automatically decompressed. ZStd with a
-prepended custom dictionary (as used by "*.megawarc.warc.zstd") is also handled transparently.
+"url" can be either a regular HTTP or HTTPS reference ("https://domain/path"), an Amazon
+S3 reference ("s3://bucket/path"), or a file path (either "file:///path" or simply
+"path"). If the data is compressed with either GZip, BZip2, or ZStd it is automatically
+decompressed. ZStd with a prepended custom dictionary (as used by "*.megawarc.warc.zstd")
+is also handled transparently.
 
 This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect secrets.`,
 		Short:             "Drill into WARC web archives",
@@ -62,28 +63,29 @@ This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect s
 	cmd.Flags().BoolVarP(&configQuiet, "quiet", "q", configQuiet, `suppress success message(s)`)
 	cmd.Flags().BoolVarP(&configJSON, "json", "s", configJSON, `output detected secrets as JSON`)
 	cmd.Flags().UintVarP(&configJobs, "jobs", "j", configJobs, `detect secrets with this many concurrent jobs`)
-	cmd.Flags().BoolVarP(&configEnclosed, "enclosed", "e", configEnclosed, `only report secrets that are clearly enclosed by their context`)
+	cmd.Flags().BoolVarP(&configEnclosed, "enclosed", "e", configEnclosed, `only report secrets that are enclosed within their context`)
 	cmd.Flags().DurationVarP(&configTimeout, "timeout", "t", configTimeout, `fetching timeout (does not apply to files)`)
 
 	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use. This could be one of the following:
-all:         All known rules will be applied, which can result in
-             a significant amount of noise for large data sets.
-most:        Most of the rules are applied, skipping the biggest
-             culprits for false positives.
-secret:      Only those rules are applied that are most likely to
-             result in an actual leak of a secret.
+all:         All known rules will be applied, which can
+             result in a significant amount of noise for
+             large data sets.
+most:        Most of the rules are applied, skipping the
+             biggest culprits for false positives.
+secret:      Only rules are applied that are most likely
+             to result in an actual leak of a secret.
 No other values are allowed.`)
 
 	cmd.Flags().VarP(&configRetry, "retry", "r", `retry strategy to use. This could be one of the following:
-never:       This strategy will fail after the first fetch failure
-             and will not attempt to retry.
-constant:    This strategy will attempt to retry up to 5 times,
-             with a 5 second delay after each attempt.
-exponential: This strategy will attempt to retry for 15 minutes,
-             with an exponentially increasing delay after each
-             attempt.
-always:      This strategy will attempt to retry forever, with no
-             delay at all after each attempt.
+never:       This strategy will fail after the first fetch
+             failure and will not attempt to retry.
+constant:    This strategy will attempt to retry up to 5
+             times, with a 5s delay after each attempt.
+exponential: This strategy will attempt to retry for 15
+             minutes, with an exponentially increasing
+             delay after each attempt.
+always:      This strategy will attempt to retry forever,
+             with no delay at all after each attempt.
 No other values are allowed.`)
 
 	// Version should include regular expression engine
