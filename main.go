@@ -47,9 +47,9 @@ JSON, which simplifies further processing of the data.
 
 "url" can be either a regular HTTP or HTTPS reference ("https://domain/path"), an Amazon
 S3 reference ("s3://bucket/path"), or a file path (either "file:///path" or simply
-"path"). If the data is compressed with either GZip, BZip2, or ZStd it is automatically
-decompressed. ZStd with a prepended custom dictionary (as used by "*.megawarc.warc.zstd")
-is also handled transparently.
+"path"). If the data is compressed with either GZip, BZip2, XZ, or ZStd it is
+automatically decompressed. ZStd with a prepended custom dictionary (as used by
+"*.megawarc.warc.zstd") is also handled transparently.
 
 This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect secrets.`,
 		Short:             "Drill into WARC web archives",

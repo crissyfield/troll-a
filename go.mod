@@ -62,6 +62,7 @@ require (
 	github.com/spf13/viper v1.18.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tetratelabs/wazero v1.5.0 // indirect
+	github.com/ulikunitz/xz v0.5.11 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
 	golang.org/x/net v0.19.0 // indirect

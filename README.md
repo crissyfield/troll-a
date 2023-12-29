@@ -18,9 +18,9 @@ secrets in web archive.
 - **Protocols:** Supports retrieving web archives directly from a network server via HTTP/HTTPS, from the
   [Amazon S3](https://aws.amazon.com/pm/serv-s3/) object storage service, or from the local file system.
 - **Compression:** Supports web archives compressed with [GZip](https://www.gzip.org),
-  [BZip2](https://sourceware.org/bzip2/), or [ZStd](https://github.com/facebook/zstd). For ZStd, it also
-  supports custom dictionaries prepended to the compressed data stream (as used by `*.megawarc.warc.zst`
-  files).
+  [BZip2](https://sourceware.org/bzip2/), [XZ](https://github.com/tukaani-project/xz), or 
+  [ZStd](https://github.com/facebook/zstd). For ZStd, it also supports custom dictionaries prepended to the
+  compressed data stream (as used by `*.megawarc.warc.zst` files).
 - **Comprehensive:** Uses the battle-tested ruleset from the [Gitleaks](https://gitleaks.io) project to
   detect up to 166 different types of secrets, tokens, keys, or other sensitive information.
 - **Performance:** Works concurrently and optionally uses optimized regular expressions (via
