@@ -39,6 +39,11 @@ func Open(addr string, opts ...Option) (io.ReadCloser, error) {
 		o(params)
 	}
 
+	// Special case: STDIN
+	if addr == "-" {
+		return io.NopCloser(os.Stdin), nil
+	}
+
 	// Parse URL
 	u, err := url.Parse(addr)
 	if err != nil {
