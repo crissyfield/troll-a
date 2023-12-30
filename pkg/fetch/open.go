@@ -39,8 +39,8 @@ func Open(addr string, opts ...Option) (io.ReadCloser, error) {
 		o(params)
 	}
 
-	// Special case: STDIN
-	if addr == "-" {
+	// Early exit on STDIN
+	if (addr == "") || (addr == "-") {
 		return io.NopCloser(os.Stdin), nil
 	}
 

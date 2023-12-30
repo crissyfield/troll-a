@@ -16,7 +16,8 @@ secrets in web archive.
 ## Features
 
 - **Protocols:** Supports retrieving web archives directly from a network server via HTTP/HTTPS, from the
-  [Amazon S3](https://aws.amazon.com/pm/serv-s3/) object storage service, or from the local file system.
+  [Amazon S3](https://aws.amazon.com/pm/serv-s3/) object storage service, from the local file system, or
+  from STDIN.
 - **Compression:** Supports web archives compressed with [GZip](https://www.gzip.org),
   [BZip2](https://sourceware.org/bzip2/), [XZ](https://github.com/tukaani-project/xz), or 
   [ZStd](https://github.com/facebook/zstd). For ZStd, it also supports custom dictionaries prepended to the
@@ -74,9 +75,10 @@ JSON, which simplifies further processing of the data.
 
 "url" can be either a regular HTTP or HTTPS reference ("https://domain/path"), an Amazon
 S3 reference ("s3://bucket/path"), a file path (either "file:///path" or simply "path"),
-or a dash ("-") to read from STDIN. If the data is compressed with either GZip, BZip2,
-XZ, or ZStd it is automatically decompressed. ZStd with a prepended custom dictionary
-(as used by "*.megawarc.warc.zstd") is also handled transparently.
+or a dash ("-") to read from STDIN. If "url" is missing data is read from STDIN. If the
+input data is compressed with either GZip, BZip2, XZ, or ZStd it is automatically
+decompressed. ZStd with a prepended custom dictionary (as used by "*.megawarc.warc.zstd")
+is also handled transparently.
 
 This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect secrets.
 

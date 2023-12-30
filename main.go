@@ -39,7 +39,7 @@ var (
 func main() {
 	// Define command
 	var cmd = &cobra.Command{
-		Use: `troll-a [flags] url
+		Use: `troll-a [flags] [url]
 
 This tool allows to extract (potential) secrets such as passwords, API keys, and tokens
 from WARC (Web ARChive) files. Extracted information is output as structured text org
@@ -47,13 +47,14 @@ JSON, which simplifies further processing of the data.
 
 "url" can be either a regular HTTP or HTTPS reference ("https://domain/path"), an Amazon
 S3 reference ("s3://bucket/path"), a file path (either "file:///path" or simply "path"),
-or a dash ("-") to read from STDIN. If the data is compressed with either GZip, BZip2,
-XZ, or ZStd it is automatically decompressed. ZStd with a prepended custom dictionary
-(as used by "*.megawarc.warc.zstd") is also handled transparently.
+or a dash ("-") to read from STDIN. If "url" is missing data is read from STDIN. If the
+input data is compressed with either GZip, BZip2, XZ, or ZStd it is automatically
+decompressed. ZStd with a prepended custom dictionary (as used by "*.megawarc.warc.zstd")
+is also handled transparently.
 
 This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect secrets.`,
 		Short:             "Drill into WARC web archives",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MaximumNArgs(1),
 		Version:           Version,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		Run:               runCommand,
@@ -103,9 +104,16 @@ func runCommand(_ *cobra.Command, args []string) {
 	// Create detector on given rules preset
 	detector := detect.NewDetector(configRulesPreset.Val, configEnclosed)
 
+	// Read from STDIN if no parameter is given
+	var inputURL string
+
+	if len(args) > 0 {
+		inputURL = args[0]
+	}
+
 	// Open reader for URL
 	fr, err := fetch.Open(
-		args[0],
+		inputURL,
 		fetch.WithTimeout(configTimeout),
 		fetch.WithBackoff(configRetry.Val),
 	)
@@ -225,6 +233,6 @@ func runCommand(_ *cobra.Command, args []string) {
 
 	// Dump success message
 	if !configQuiet {
-		cli.Success("Success: Processed %s (%d records)", args[0], recordCount)
+		cli.Success("Success: Processed %s (%d records)", inputURL, recordCount)
 	}
 }
