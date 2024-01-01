@@ -32,6 +32,7 @@ var (
 	configJobs        = uint(8)
 	configEnclosed    = false
 	configTimeout     = 30 * time.Minute
+	configFilter      = ""
 	configRulesPreset = cli.RulesPreset{Val: preset.Secret}
 	configRetry       = cli.RetryStrategy{Val: cli.RetryStrategyValNever}
 )
@@ -74,6 +75,11 @@ This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect s
 	cmd.Flags().BoolVarP(&configEnclosed, "enclosed", "e", configEnclosed, `only report secrets that are enclosed within their context`)
 	cmd.Flags().DurationVarP(&configTimeout, "timeout", "t", configTimeout, `fetching timeout (does not apply to files)`)
 
+	cmd.Flags().StringVarP(&configFilter, "filter", "f", configFilter, `filter for the target URL of each WARC record. Only WARC
+records that match the given regular expression (using RE2
+syntax) will be checked for secrets. An empty filter will
+match everything.`)
+
 	cmd.Flags().VarP(&configRulesPreset, "preset", "p", `rules preset to use. This could be one of the following:
 all:         All known rules will be applied, which can
              result in a significant amount of noise for
@@ -110,6 +116,19 @@ No other values are allowed.`)
 func runCommand(_ *cobra.Command, args []string) {
 	// Create detector on given rules preset
 	detector := detect.NewDetector(configRulesPreset.Val, configEnclosed)
+
+	// Create filter regular expression
+	var filter detect.AbstractRegexp
+
+	if configFilter != "" {
+		f, err := detect.CompileRegexp(configFilter)
+		if err != nil {
+			cli.Error(`Error: Invalid filter regular expression ["%s"]`, err)
+			os.Exit(1) //nolint
+		}
+
+		filter = f
+	}
 
 	// Read from STDIN if no parameter is given
 	var inputURL string
@@ -154,7 +173,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	// Traverse WARC file
 	var recordCount atomic.Uint64
 
-	err = warc.Traverse(dr, NewWARCTraversalFunc(ctx.Done(), bufferCh, &recordCount))
+	err = warc.Traverse(dr, NewWARCTraversalFunc(ctx.Done(), filter, bufferCh, &recordCount))
 	if err != nil {
 		cli.Error(`Error: Failed to process WARC file ["%s"]`, err)
 		os.Exit(1) //nolint
@@ -219,7 +238,7 @@ func NewSecretsDetectorFunc(in <-chan *buffer, detector *detect.Detector, asJSON
 }
 
 // NewWARCTraversalFunc ...
-func NewWARCTraversalFunc(done <-chan struct{}, out chan<- *buffer, count *atomic.Uint64) func(*warc.Record) error {
+func NewWARCTraversalFunc(done <-chan struct{}, filter detect.AbstractRegexp, out chan<- *buffer, count *atomic.Uint64) func(*warc.Record) error {
 	return func(r *warc.Record) error {
 		select {
 		case <-done:
@@ -229,6 +248,11 @@ func NewWARCTraversalFunc(done <-chan struct{}, out chan<- *buffer, count *atomi
 		default:
 			// Bail if wrong type or payload
 			if (r.Type != warc.RecordTypeResponse) || (!mime.IsText(r.IdentifiedPayloadType) && !mime.IsText(r.HTTPContentType)) {
+				return nil
+			}
+
+			// Bail if filter is not matched
+			if (filter != nil) && !filter.MatchString(r.TargetURI) {
 				return nil
 			}
 
