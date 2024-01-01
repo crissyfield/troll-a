@@ -88,24 +88,10 @@ func (d *Detector) detectRule(s *state, r *Rule) []*Finding {
 		match := strings.Trim(s.raw[start:end], "\n")
 
 		// Extract secret from the regexp submatches
-		secret := match
+		secret := extractSecretFromRegexpSubmatch(r, match)
 
-		if r.SecretGroup > 0 {
-			// Pick specific secret group
-			groups := r.Regex.FindStringSubmatch(secret)
-			if len(groups) > r.SecretGroup {
-				secret = groups[r.SecretGroup]
-			}
-		} else {
-			// Otherwise, pick second group (if there are only two)
-			groups := r.Regex.FindStringSubmatch(secret)
-			if len(groups) == 2 {
-				secret = groups[1]
-			}
-		}
-
-		// Skip, if the secret is in the list of stopwords
 		if r.Allowlist.ContainsStopWord(secret) {
+			// Skip, if the secret is in the list of stopwords
 			continue
 		}
 
@@ -138,38 +124,14 @@ func (d *Detector) detectRule(s *state, r *Rule) []*Finding {
 			}
 		}
 
-		// Check for entropy
-		if r.Entropy != 0.0 {
-			// Compute entropy and bail if too small
-			entropy := shannonEntropy(secret)
-			if entropy <= r.Entropy {
-				continue
-			}
-
-			// Hack borrowed from original GitLeaks code
-			if strings.HasPrefix(r.RuleID, "generic") {
-				// Skip if there is NO digit in the secret
-				var containsDigit bool
-
-				for _, r := range secret {
-					if (r >= '1') && (r <= '9') {
-						containsDigit = true
-						break
-					}
-				}
-
-				if !containsDigit {
-					continue
-				}
-			}
+		// Skip on low entropy (if required)
+		if (r.Entropy != 0.0) && checkIfLowEntropy(r, secret) {
+			continue
 		}
 
-		// Check if the secret is enclosed
-		if d.enclosed {
-			// Check if secret is enclosed in line context
-			if !checkIfEnclosed(loc.Line(s.raw), secret) {
-				continue
-			}
+		// Skip if not enclosed (if required)
+		if d.enclosed && !checkIfEnclosed(loc.Line(s.raw), secret) {
+			continue
 		}
 
 		// Append finding
@@ -183,6 +145,53 @@ func (d *Detector) detectRule(s *state, r *Rule) []*Finding {
 	}
 
 	return findings
+}
+
+// extractSecretFromRegexpSubmatch extracts the secret from the given match for the given rule r.
+func extractSecretFromRegexpSubmatch(r *Rule, match string) string {
+	if r.SecretGroup > 0 {
+		// Pick specific secret group
+		groups := r.Regex.FindStringSubmatch(match)
+		if len(groups) > r.SecretGroup {
+			return groups[r.SecretGroup]
+		}
+	} else {
+		// Otherwise, pick second group (if there are only two)
+		groups := r.Regex.FindStringSubmatch(match)
+		if len(groups) == 2 {
+			return groups[1]
+		}
+	}
+
+	return match
+}
+
+// checkIfLowEntropy checks if the entropy of the given secret is too low for the given rule r.
+func checkIfLowEntropy(r *Rule, secret string) bool {
+	// Compute entropy and bail if too small
+	entropy := shannonEntropy(secret)
+	if entropy <= r.Entropy {
+		return true
+	}
+
+	// Hack borrowed from original GitLeaks code
+	if strings.HasPrefix(r.RuleID, "generic") {
+		// Skip if there is NO digit in the secret
+		var containsDigit bool
+
+		for _, r := range secret {
+			if (r >= '1') && (r <= '9') {
+				containsDigit = true
+				break
+			}
+		}
+
+		if !containsDigit {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Check if secret is enclosed in context.

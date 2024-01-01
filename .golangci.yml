@@ -9,6 +9,7 @@ linters:
     - exhaustive    # check exhaustiveness of enum switch statements
     - forbidigo     # forbids identifiers
     - goconst       # finds repeated strings that could be replaced by a constant
+    - gocyclo       # computes and checks the cyclomatic complexity of functions.
     - makezero      # finds slice declarations with non-zero initial length
     - nakedret      # finds naked returns in functions greater than a specified function length
     - nestif        # reports deeply nested if statements
@@ -39,6 +40,9 @@ linters-settings:
   goconst:
     min-len: 3                            # minimal length of string constant, 3 by default
     min-occurrences: 3                    # minimal occurrences count to trigger, 3 by default
+
+  gocyclo:
+    min-complexity: 15                    # minimal code complexity to report, 30 by default
 
   nestif:
     min-complexity: 8                     # minimal complexity of if statements to report
