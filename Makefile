@@ -28,7 +28,7 @@ build-local-std:
 .PHONY: build-local-re2
 build-local-re2:
 	@echo "Building ${COL_GREEN_BRIGHT}local with go-re2 regular expressions${COL_RESET}..."
-	@CGO_ENABLED=1 go build ${FLAGS} ${FLAGS_CGO} -o "${NAME}" .
+	@CGO_ENABLED=1 go build ${FLAGS} ${FLAGS_RE2} -o "${NAME}" .
 
 .PHONY: build-mkdist
 build-mkdist: clean
