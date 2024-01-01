@@ -67,7 +67,7 @@ go install -tags re2_cgo github.com/crissyfield/troll-a@v1.0.0
 
 ```
 Usage:
-  troll-a [flags] url
+  troll-a [flags] [url]
 
 This tool allows to extract (potential) secrets such as passwords, API keys, and tokens
 from WARC (Web ARChive) files. Extracted information is output as structured text org
@@ -84,6 +84,10 @@ This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect s
 
 Flags:
   -e, --enclosed               only report secrets that are enclosed within their context
+  -f, --filter string          filter for the target URL of each WARC record. Only WARC
+                               records that match the given regular expression (using RE2
+                               syntax) will be checked for secrets. An empty filter will
+                               match everything.
   -h, --help                   help for troll-a
   -j, --jobs uint              detect secrets with this many concurrent jobs (default 8)
   -s, --json                   output detected secrets as JSON
