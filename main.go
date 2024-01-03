@@ -55,7 +55,7 @@ JSON, which simplifies further processing of the data.
 
 "url" can be either a regular HTTP or HTTPS reference ("https://domain/path"), an Amazon
 S3 reference ("s3://bucket/path"), a file path (either "file:///path" or simply "path"),
-or a dash ("-") to read from STDIN. If "url" is missing data is read from STDIN. If the
+or a dash ("-") to read from STDIN. If "url" is omitted data is read from STDIN. If the
 input data is compressed with either GZip, BZip2, XZ, or ZStd it is automatically
 decompressed. ZStd with a prepended custom dictionary (as used by "*.megawarc.warc.zstd")
 is also handled transparently.
