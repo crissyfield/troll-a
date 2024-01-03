@@ -37,7 +37,7 @@ secrets in web archive.
 registry](https://github.com/crissyfield/troll-a/pkgs/container/troll-a) and can be used as follows:
 
 ```bash
-docker run ghcr.io/crissyfield/troll-a [flags] [url]
+docker run --rm ghcr.io/crissyfield/troll-a [flags] [url]
 ```
 
 ### Prebuilt Binaries
