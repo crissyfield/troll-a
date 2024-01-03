@@ -31,14 +31,28 @@ secrets in web archive.
 
 ## Installation
 
-### Download
+### Docker
 
-`Troll-A` is available in binary form for macOS and Linux on the
+`Troll-A` is available on [Github's container
+registry](https://github.com/crissyfield/troll-a/pkgs/container/troll-a) and can be used as follows:
+
+```bash
+docker run ghcr.io/crissyfield/troll-a [flags] [url]
+```
+
+### Prebuilt Binaries
+
+`Troll-A` is also available in binary form for macOS and Linux on the
 [releases page](https://github.com/crissyfield/troll-a/releases).
 
-### Building
+> [!NOTE]
+> Unlike the Docker image, the prebuilt binaries are compiled using Go's Stdlib regular expressions and are
+> therefore noticeably slower. If native binaries are preferred and performance is crucial, it is recommended
+> to build the binaries from source.
 
-For better performance, it is recommended to build `Troll-A` from source, as this allows to use optimized
+### Build From Source
+
+For better performance, it is recommended to build `Troll-A` from source, as this allows to use the optimized
 regular expression engine provided by [go-re2](https://github.com/wasilibs/go-re2). For this to work, the
 [RE2](https://github.com/google/re2) dependency must be installed first.
 

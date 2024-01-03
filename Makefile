@@ -3,9 +3,9 @@ VERSION=`git describe --tag --always`
 FLAGS=-ldflags="-s -w -X 'main.Version=${VERSION}'" -trimpath
 FLAGS_RE2=-tags re2_cgo
 
-COL_RESET=`tput sgr0`
-COL_GREEN_BRIGHT=`tput setaf 10`
-COL_YELLOW_BRIGHT=`tput setaf 11`
+COL_RESET=`command -v tput >/dev/null 2>&1 && tput sgr0`
+COL_GREEN_BRIGHT=`command -v tput >/dev/null 2>&1 && tput setaf 10`
+COL_YELLOW_BRIGHT=`command -v tput >/dev/null 2>&1 && tput setaf 11`
 
 .PHONY: build-std
 build-std: build-setup build-local-std
@@ -79,3 +79,20 @@ build-dist-darwin-arm64:
 clean:
 	@echo "${COL_YELLOW_BRIGHT}Cleaning dist${COL_RESET}..."
 	@rm -rf dist
+
+.PHONY: docker
+docker:
+	@echo "Building ${COL_GREEN_BRIGHT}docker multiarch${COL_RESET}..."
+	@docker buildx build \
+		--push \
+		--platform linux/amd64,linux/arm64,linux/arm/v7 \
+		--annotation "org.opencontainers.image.title=Troll-A" \
+		--annotation "org.opencontainers.image.description=Drill into WARC web archives" \
+		--annotation "org.opencontainers.image.url=https://github.com/crissyfield/troll-a.git" \
+		--annotation "org.opencontainers.image.source=https://github.com/crissyfield/troll-a" \
+		--annotation "org.opencontainers.image.authors=Dr. Thomas Jansen <thomas@crissyfield.de>" \
+		--annotation "org.opencontainers.image.version=${VERSION}" \
+		--annotation "org.opencontainers.image.licenses=Apache-2.0" \
+		--tag "ghcr.io/crissyfield/${NAME}:latest" \
+		--tag "ghcr.io/crissyfield/${NAME}:${VERSION}" \
+		.
