@@ -26,7 +26,9 @@ secrets in web archive.
   detect up to 166 different types of secrets, tokens, keys, or other sensitive information.
 - **Performance:** Works concurrently and optionally uses optimized regular expressions (via
   [go-re2](https://github.com/wasilibs/go-re2)) to process a typical [Common Crawl](https://commoncrawl.org)
-  web archive (~34.000 pages) in less than 30 seconds on AWS `c7g.12xlarge`.
+  web archive (~34.000 pages) in less than 30 seconds on AWS `c7g.12xlarge`. This can be further improved by
+  narrowing down the WARC records to process, via the `--filter` option.
+- **Distribution:** `Troll-A` is distributed as prebuilt binaries, as a Docker image, or in source form.
 
 
 ## Installation
