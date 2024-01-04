@@ -20,7 +20,8 @@ const (
 	magicZStdSkippableFrame = "\x2a\x4d\x18"             // Magic bytes for the ZStd skippable frame format (RFC 8478, section 3.1.2)
 )
 
-// NewDecompressionReader will return a new reader transparently doing decompression of GZip, BZip2, and ZStd.
+// NewDecompressionReader will return a new reader transparently doing decompression of GZip, BZip2, XZ, and
+// ZStd.
 func NewDecompressionReader(r io.ReadCloser) (io.ReadCloser, error) {
 	// Read magic bytes
 	br := bufio.NewReader(r)
