@@ -65,7 +65,7 @@ regular expression engine provided by [go-re2](https://github.com/wasilibs/go-re
 brew install re2
 
 # Install with RE2 activated
-go install -tags re2_cgo github.com/crissyfield/troll-a@v1.1.0
+go install -tags re2_cgo github.com/crissyfield/troll-a@v1.2.0
 ```
 
 #### Debian / Ubuntu
@@ -75,7 +75,7 @@ go install -tags re2_cgo github.com/crissyfield/troll-a@v1.1.0
 sudo apt install -u build-essential libre2-dev
 
 # Install with RE2 activated
-go install -tags re2_cgo github.com/crissyfield/troll-a@v1.1.0
+go install -tags re2_cgo github.com/crissyfield/troll-a@v1.2.0
 ```
 
 
