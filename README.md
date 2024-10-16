@@ -99,6 +99,9 @@ is also handled transparently.
 This tool uses rules from the Gitleaks project (https://gitleaks.io) to detect secrets.
 
 Flags:
+  -c, --custom stringArray     additional custom rule to apply. Secrets that match the
+                               given regular expression (using RE2 syntax) will also be
+                               reported. Can be specified multiple times.
   -e, --enclosed               only report secrets that are enclosed within their context
   -f, --filter string          filter for the target URL of each WARC record. Only WARC
                                records that match the given regular expression (using RE2
@@ -115,6 +118,9 @@ Flags:
                                             biggest culprits for false positives.
                                secret:      Only rules are applied that are most likely
                                             to result in an actual leak of a secret.
+                               none:        No rules at all are applied. This can be used
+                                            in combination with custom rules via the
+                                            --custom/-c switch.
                                No other values are allowed. (default secret)
   -q, --quiet                  suppress success message(s)
   -r, --retry retry-strategy   retry strategy to use. This could be one of the following:
