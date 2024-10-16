@@ -34,6 +34,7 @@ var (
 	configTimeout     = 30 * time.Minute
 	configFilter      = ""
 	configRulesPreset = cli.RulesPreset{Val: preset.Secret}
+	configRulesCustom = []string{}
 	configRetry       = cli.RetryStrategy{Val: cli.RetryStrategyValNever}
 )
 
@@ -88,10 +89,14 @@ most:        Most of the rules are applied, skipping the
              biggest culprits for false positives.
 secret:      Only rules are applied that are most likely
              to result in an actual leak of a secret.
-none:        No rules at all are applied. This can be
-             used in combination with custom rules via
-             the --custom/-c switch.
+none:        No rules at all are applied. This can be used
+             in combination with custom rules via the
+             --custom/-c switch.
 No other values are allowed.`)
+
+	cmd.Flags().StringArrayVarP(&configRulesCustom, "custom", "c", nil, `additional custom rule to apply. Secrets that match the
+given regular expression (using RE2 syntax) will also be
+reported. Can be specified multiple times.`)
 
 	cmd.Flags().VarP(&configRetry, "retry", "r", `retry strategy to use. This could be one of the following:
 never:       This strategy will fail after the first fetch
@@ -118,7 +123,11 @@ No other values are allowed.`)
 // runCommand is called when the command is used.
 func runCommand(_ *cobra.Command, args []string) {
 	// Create detector on given rules preset
-	detector := detect.NewDetector(configRulesPreset.Val, configEnclosed)
+	detector, err := detect.NewDetector(configRulesPreset.Val, configRulesCustom, configEnclosed)
+	if err != nil {
+		cli.Error(`Error: Invalid custom rule regular expression ["%s"]`, err)
+		os.Exit(1) //nolint
+	}
 
 	// Create filter regular expression
 	var filter detect.AbstractRegexp

@@ -1,6 +1,8 @@
 package detect
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/zricethezav/gitleaks/v8/config"
@@ -28,5 +30,14 @@ func NewRuleFromGitleaksRule(r *config.Rule) *Rule {
 		SecretGroup: r.SecretGroup,
 		Regex:       CloneRegexp(r.Regex),
 		Allowlists:  r.Allowlists,
+	}
+}
+
+// NewRuleFromRegExp creates a Rule object from a regular expression.
+func NewRuleFromRegExp(re *regexp.Regexp, idx int) *Rule {
+	return &Rule{
+		RuleID:      fmt.Sprintf("custom-rule-%d", idx),
+		Description: fmt.Sprintf("Custom rule #%d (as specified via command line)", idx),
+		Regex:       CloneRegexp(re),
 	}
 }

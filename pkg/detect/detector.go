@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -17,20 +18,33 @@ type Detector struct {
 	enclosed      bool
 }
 
-// NewDetector creates a new Detector object with rules from the given set of rule functions.
-func NewDetector(ruleFns []GitleaksRuleFunction, enclosed bool) *Detector {
-	// Shut up GitLeaks trace logs
+// NewDetector creates a new Detector object with rules from the given set of Gitleaks rule functions and
+// additional custom rules.
+func NewDetector(ruleFns []GitleaksRuleFunction, customs []string, enclosed bool) (*Detector, error) {
+	// Shut up Gitleaks trace logs
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	// Create rules and extract raw expressions
-	rules := make([]*Rule, len(ruleFns))
-	exprs := make([]string, len(rules))
+	rules := make([]*Rule, 0, len(ruleFns)+len(customs))
+	exprs := make([]string, 0, len(ruleFns)+len(customs))
 
-	for i, fn := range ruleFns {
+	for _, fn := range ruleFns {
+		// Add Gitleaks rules and extract raw expressions
 		r := fn()
 
-		rules[i] = NewRuleFromGitleaksRule(r)
-		exprs[i] = r.Regex.String()
+		rules = append(rules, NewRuleFromGitleaksRule(r))
+		exprs = append(exprs, r.Regex.String())
+	}
+
+	for i, c := range customs {
+		// Add custom rules and extract raw expressions
+		re, err := regexp.Compile(c)
+		if err != nil {
+			return nil, fmt.Errorf("unable to compile custom rule as regular expression [%s]: %w", c, err)
+		}
+
+		rules = append(rules, NewRuleFromRegExp(re, i))
+		exprs = append(exprs, re.String())
 	}
 
 	// Return detector
@@ -38,7 +52,7 @@ func NewDetector(ruleFns []GitleaksRuleFunction, enclosed bool) *Detector {
 		rules:         rules,
 		combinedRegep: MustCompileRegexp(strings.Join(exprs, "|")),
 		enclosed:      enclosed,
-	}
+	}, nil
 }
 
 // state wraps some internal state for the detection.
@@ -185,7 +199,7 @@ func checkIfLowEntropy(r *Rule, secret string) bool {
 		return true
 	}
 
-	// Hack borrowed from original GitLeaks code
+	// Hack borrowed from original Gitleaks code
 	if strings.HasPrefix(r.RuleID, "generic") {
 		// Skip if there is NO digit in the secret
 		var containsDigit bool
