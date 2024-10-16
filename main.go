@@ -88,6 +88,9 @@ most:        Most of the rules are applied, skipping the
              biggest culprits for false positives.
 secret:      Only rules are applied that are most likely
              to result in an actual leak of a secret.
+none:        No rules at all are applied. This can be
+             used in combination with custom rules via
+             the --custom/-c switch.
 No other values are allowed.`)
 
 	cmd.Flags().VarP(&configRetry, "retry", "r", `retry strategy to use. This could be one of the following:
