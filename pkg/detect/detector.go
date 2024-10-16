@@ -80,48 +80,54 @@ func (d *Detector) detectRule(s *state, r *Rule) []*Finding {
 	// Find all strings matching the rule's regular expression
 	var findings []*Finding
 
-	idxs := r.Regex.FindAllStringIndex(s.raw, -1)
-	for _, idx := range idxs {
-		// Extract match
+	for _, idx := range r.Regex.FindAllStringIndex(s.raw, -1) {
+		// Extract match and secret
 		start, end := idx[0], idx[1]
 
 		match := strings.Trim(s.raw[start:end], "\n")
-
-		// Extract secret from the regexp submatches
 		secret := extractSecretFromRegexpSubmatch(r, match)
-
-		if r.Allowlist.ContainsStopWord(secret) {
-			// Skip, if the secret is in the list of stopwords
-			continue
-		}
 
 		// Determine location of the match
 		if s.locator == nil {
-			// Deferred, as it might be rather slow
 			s.locator = NewLocator(s.raw)
 		}
 
 		loc := s.locator.Find(start, end)
 
-		// Skip, if the secret, match, or line is allowed
-		switch r.Allowlist.RegexTarget {
-		case "match":
-			// Check for match
-			if r.Allowlist.RegexAllowed(match) {
-				continue
+		// Traverse allow lists
+		var skip bool
+
+		for _, al := range r.Allowlists {
+			// Skip, if the secret is in the list of stopwords
+			if al.ContainsStopWord(secret) {
+				skip = true
+				break
 			}
 
-		case "line":
-			// Check for line
-			if r.Allowlist.RegexAllowed(s.raw[loc.StartLineIdx:loc.EndLineIdx]) {
-				continue
+			// Skip, if the secret, match, or line is allowed
+			if al.RegexTarget == "match" {
+				// Check for match
+				if al.RegexAllowed(match) {
+					skip = true
+					break
+				}
+			} else if al.RegexTarget == "line" {
+				// Check for line
+				if al.RegexAllowed(s.raw[loc.StartLineIdx:loc.EndLineIdx]) {
+					skip = true
+					break
+				}
+			} else {
+				// Check for secret
+				if al.RegexAllowed(secret) {
+					skip = true
+					break
+				}
 			}
+		}
 
-		default:
-			// Check for secret
-			if r.Allowlist.RegexAllowed(secret) {
-				continue
-			}
+		if skip {
+			continue
 		}
 
 		// Skip on low entropy (if required)
