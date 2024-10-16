@@ -23,6 +23,8 @@ func (rp RulesPreset) String() string {
 		return "most"
 	case len(preset.Secret):
 		return "secret"
+	case len(preset.None):
+		return "none"
 	}
 
 	return ""
@@ -40,10 +42,13 @@ func (rp *RulesPreset) Set(s string) error {
 	case "secret":
 		rp.Val = preset.Secret
 		return nil
+	case "none":
+		rp.Val = preset.None
+		return nil
 	}
 
 	// Invalid
-	return errors.New(`must be one of "all", "most", or "secret"`)
+	return errors.New(`must be one of "all", "most", "secret", or "none"`)
 }
 
 // Type returns the name of the rules preset type.
