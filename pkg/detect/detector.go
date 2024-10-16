@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 	"unicode"
+
+	"github.com/rs/zerolog"
 )
 
 // Detector wraps a set of rules to detect secrets.
@@ -17,6 +19,9 @@ type Detector struct {
 
 // NewDetector creates a new Detector object with rules from the given set of rule functions.
 func NewDetector(ruleFns []GitleaksRuleFunction, enclosed bool) *Detector {
+	// Shut up GitLeaks trace logs
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
 	// Create rules and extract raw expressions
 	rules := make([]*Rule, len(ruleFns))
 	exprs := make([]string, len(rules))

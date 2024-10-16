@@ -12,6 +12,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.13.0
 	github.com/gabriel-vasile/mimetype v1.4.6
 	github.com/klauspost/compress v1.17.11
+	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
 	github.com/ulikunitz/xz v0.5.12
 	github.com/wasilibs/go-re2 v1.7.0
@@ -54,7 +55,6 @@ require (
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/sagikazarmark/locafero v0.6.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
